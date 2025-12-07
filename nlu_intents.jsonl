@@ -1,0 +1,53 @@
+{"intent": "ask_fertilizer", "text": "What is the best fertilizer for my tea plants right now?"}
+{"intent": "ask_fertilizer", "text": "How often should I apply fertilizer during the dry season?"}
+{"intent": "report_pest", "text": "My leaves are turning yellow — what does that mean?"}
+{"intent": "ask_soil_info", "text": "What is the ideal soil pH for tea?"}
+{"intent": "ask_yield", "text": "How can I improve my tea yield this season?"}
+{"intent": "ask_yield", "text": "Should I prune my tea bushes now or wait until next month?"}
+{"intent": "ask_yield", "text": "What nutrients are missing if my plants grow slowly?"}
+{"intent": "ask_irrigation", "text": "How do I manage weed growth naturally?"}
+{"intent": "report_pest", "text": "How can I identify if my tea plants have red spider mite?"}
+{"intent": "report_pest", "text": "What are the symptoms of blister blight?"}
+{"intent": "report_pest", "text": "What pesticide should I use for green leafhopper?"}
+{"intent": "report_pest", "text": "Are there organic ways to control pests?"}
+{"intent": "report_pest", "text": "How can I prevent fungal infections after rain?"}
+{"intent": "report_pest", "text": "Why are my tea leaves curling and drying up?"}
+{"intent": "report_pest", "text": "What are the early signs of tea mosquito bug?"}
+{"intent": "report_pest", "text": "Can I mix two pesticides together?"}
+{"intent": "ask_irrigation", "text": "Should I irrigate my tea fields tomorrow?"}
+{"intent": "ask_irrigation", "text": "How can I protect my tea during heavy rainfall?"}
+{"intent": "ask_irrigation", "text": "Is this temperature suitable for new tea shoots?"}
+{"intent": "ask_irrigation", "text": "How does humidity affect pest outbreaks?"}
+{"intent": "ask_soil_info", "text": "My soil pH is 4.2 — is that okay for tea?"}
+{"intent": "ask_soil_info", "text": "How can I increase soil organic matter?"}
+{"intent": "ask_fertilizer", "text": "Which fertilizer brand do you recommend for young tea plants?"}
+{"intent": "ask_fertilizer", "text": "How do I balance NPK for mature bushes?"}
+{"intent": "ask_fertilizer", "text": "Can I use compost instead of urea?"}
+{"intent": "ask_yield", "text": "How much yield can I expect per hectare?"}
+{"intent": "ask_yield", "text": "How do I increase yield without using chemicals?"}
+{"intent": "ask_yield", "text": "What affects the quality of my tea leaves?"}
+{"intent": "ask_yield", "text": "How can I reduce my production cost?"}
+{"intent": "ask_yield", "text": "Is my yield lower because of soil quality or weather?"}
+{"intent": "ask_irrigation", "text": "How often should I water tea plants in the dry zone?"}
+{"intent": "ask_irrigation", "text": "Can I use drip irrigation for tea?"}
+{"intent": "ask_irrigation", "text": "How to save water during drought?"}
+{"intent": "ask_irrigation", "text": "Is my water pH important for tea?"}
+{"intent": "ask_fertilizer", "text": "Can you suggest a fertilizer plan for my region?"}
+{"intent": "request_report", "text": "Show me pest detection results."}
+{"intent": "report_pest", "text": "What is the best time to spray pesticide?"}
+{"intent": "report_pest", "text": "Recommend me an organic pest control method."}
+{"intent": "request_report", "text": "Give me a report for this month’s yield."}
+{"intent": "update_farm_data", "text": "How do I update my farm data?"}
+{"intent": "ask_soil_info", "text": "How do I raise my soil pH safely?"}
+{"intent": "ask_soil_info", "text": "Does soil type affect fertilizer needs?"}
+{"intent": "ask_soil_info", "text": "Is high organic matter always good for tea?"}
+{"intent": "ask_fertilizer", "text": "Should I reduce fertilizer during heavy rainfall?"}
+{"intent": "ask_fertilizer", "text": "How do I know if I am over-fertilizing my tea plants?"}
+{"intent": "request_report", "text": "Show me my fertilizer usage for this season."}
+{"intent": "request_report", "text": "Give me last year’s yield comparison chart."}
+{"intent": "request_report", "text": "Generate a pest summary for my estate."}
+{"intent": "update_farm_data", "text": "How do I add a new field to my farm records?"}
+{"intent": "update_farm_data", "text": "How do I change the bush age or clone information?"}
+{"intent": "ask_yield", "text": "Why is my yield low even though I apply enough fertilizer?"}
+{"intent": "ask_yield", "text": "How long does a tea bush take to recover after pruning?"}
+{"intent": "ask_yield", "text": "Does shade help increase tea yield?"}

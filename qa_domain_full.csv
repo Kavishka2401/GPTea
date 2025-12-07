@@ -1,0 +1,54 @@
+id,intent,question,answer,tags
+qa001,ask_fertilizer,What is the best fertilizer for my tea plants right now?,Balanced NPK such as 10:10:10 or 12:6:18.,fertilizer;tea;NPK
+qa002,ask_fertilizer,How often should I apply fertilizer during the dry season?,Apply every 6–8 weeks with moisture.,fertilizer;schedule
+qa003,report_pest,My leaves are turning yellow — what does that mean?,May indicate nitrogen deficiency or mites.,yellowing;symptom;deficiency
+qa004,ask_soil_info,What is the ideal soil pH for tea?,Ideal pH is 4.5–5.5.,soil_pH;tea
+qa005,ask_yield,How can I improve my tea yield this season?,"Improve pruning, nutrition, and pest control.",yield;management
+qa006,ask_yield,Should I prune my tea bushes now or wait until next month?,"Prune during a dry, cool period.",pruning;timing
+qa007,ask_yield,What nutrients are missing if my plants grow slowly?,"Likely N, P, K, Mg or S deficiency.",nutrients;deficiency
+qa008,ask_irrigation,How do I manage weed growth naturally?,Mulching and hand weeding.,weed_management;organic
+qa009,report_pest,How can I identify red spider mite?,Look for yellow speckles and fine webbing.,red_spider_mite;symptoms
+qa010,report_pest,What are the symptoms of blister blight?,Brown spots that spread in humidity.,blister_blight;fungal
+qa011,report_pest,What pesticide should I use for green leafhopper?,Use selective insecticides.,leafhopper;insecticide
+qa012,report_pest,Are there organic ways to control pests?,Neem and soap sprays.,organic;pest_control
+qa013,report_pest,How can I prevent fungal infections after rain?,Improve drainage and prune.,fungal;rain
+qa014,report_pest,Why are my tea leaves curling and drying up?,"Could be stress, mites or mosquito bug.",leaf_curling;stress
+qa015,report_pest,What are early signs of tea mosquito bug?,Purple lesions and cupping.,mosquito_bug;symptoms
+qa016,report_pest,Can I mix two pesticides together?,Only if label says safe.,pesticide_mixing
+qa017,ask_irrigation,Should I irrigate my tea fields tomorrow?,Irrigate if soil is dry and no rain expected.,irrigation;timing
+qa018,ask_irrigation,How can I protect my tea during heavy rainfall?,Maintain drainage and ground cover.,rain;protection
+qa019,ask_irrigation,Is this temperature suitable for new tea shoots?,Moderate temperatures are best.,temperature;new_shoots
+qa020,ask_irrigation,How does humidity affect pest outbreaks?,High humidity increases fungal risk.,humidity;pest_outbreaks
+qa021,ask_soil_info,My soil pH is 4.2 — is that okay for tea?,Slightly low; add small dolomite doses.,soil_pH;liming
+qa022,ask_soil_info,How can I increase soil organic matter?,Add compost and mulch.,organic_matter;soil_health
+qa023,ask_fertilizer,Which fertilizer brand for young tea plants?,Any reputable NPK brand works.,fertilizer_brand;young_tea
+qa024,ask_fertilizer,How do I balance NPK for mature bushes?,Follow soil tests and TRI ratios.,NPK_balance
+qa025,ask_fertilizer,Can I use compost instead of urea?,"Yes, partially replace and monitor nitrogen.",compost;urea
+qa026,ask_yield,How much yield per hectare?,2000–3000 kg/ha typical.,yield;benchmark
+qa027,ask_yield,Increase yield without chemicals?,"Use compost, mulch, good pruning.",organic;yield
+qa028,ask_yield,What affects tea leaf quality?,Plucking standard and fertility.,leaf_quality
+qa029,ask_yield,How can I reduce production cost?,Optimize inputs and improve labour efficiency.,cost_reduction
+qa030,ask_yield,Is my yield low because of soil quality or weather?,Check soil tests vs rainfall patterns.,yield_root_cause
+qa031,ask_irrigation,How often to water tea plants in dry zone?,Young: every few days; mature: deeper less frequent.,irrigation;dry_zone
+qa032,ask_irrigation,Can I use drip irrigation for tea?,"Yes, efficient water-saving option.",drip_irrigation
+qa033,ask_irrigation,How to save water during drought?,Mulch and irrigate early/late.,drought;water_saving
+qa034,ask_irrigation,Is my water pH important for tea?,"Yes, long-term pH impacts soil.",water_pH;irrigation
+qa035,ask_fertilizer,Suggest a fertilizer plan for my region.,Follow TRI regional schedules.,fertilizer_plan
+qa036,request_report,Show me pest detection results.,Summary of pests and confidence levels.,pest_report
+qa037,report_pest,Best time to spray pesticide?,Early morning or late afternoon.,spray_timing
+qa038,report_pest,Recommend organic pest control method.,"Neem, Bt, predators.",organic_control
+qa039,request_report,Give me a report for this month’s yield.,Shows made tea and trends.,yield_report
+qa040,update_farm_data,How do I update my farm data?,"Edit fields, clones, and records in dashboard.",farm_data_update
+qa041,ask_soil_info,How do I raise my soil pH safely?,Apply small doses of dolomite.,soil_pH;liming
+qa042,ask_soil_info,Does soil type affect fertilizer needs?,"Yes, sandy soils need more frequent doses.",soil_type
+qa043,ask_soil_info,Is high organic matter always good for tea?,Generally yes but avoid excessive nitrogen tie-up.,organic_matter
+qa044,ask_fertilizer,Should I reduce fertilizer during heavy rainfall?,Yes—nutrients leach quickly.,fertilizer;rain
+qa045,ask_fertilizer,How do I know if I am over-fertilizing?,Burnt edges and dark leaves.,overfertilization
+qa046,request_report,Show me my fertilizer usage for this season.,Report shows totals and cost.,fertilizer_report
+qa047,request_report,Give me last year’s yield comparison chart.,Shows annual trends and rainfall impact.,yield_comparison
+qa048,request_report,Generate a pest summary for my estate.,Lists pests and risk levels.,pest_summary
+qa049,update_farm_data,How do I add a new field?,"Add name, area, clone, boundaries.",add_field
+qa050,update_farm_data,How do I change bush age or clone info?,Edit in field settings.,update_clone
+qa051,ask_yield,Why is my yield low even with enough fertilizer?,"Could be pruning, pests, shade or stress.",yield_issue
+qa052,ask_yield,How long does tea take to recover after pruning?,8–12 weeks.,pruning_recovery
+qa053,ask_yield,Does shade help increase tea yield?,Moderate shade improves leaf tenderness.,shade;yield
