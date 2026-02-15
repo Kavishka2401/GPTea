@@ -2,70 +2,79 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 from groq import Groq
-from chatbot_openai import ask_llm_with_rag
-from rag_retrieval import retrieve_docs
+from langchain_core.evaluation import load_evaluator
+from chatbot_openai import chain  # Import your new LangChain chain
 
 # 1. SETUP
 load_dotenv()
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+judge_llm = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-def get_llm_judge_score(question, ground_truth, generated_answer):
-    """Asks the LLM to act as a judge and score the answer."""
-    prompt = f"""
-    You are an expert judge evaluating a farming assistant.
+def validate_bot():
+    # Load your test cases
+    df = pd.read_csv('dataset.csv')
+    print(f"Starting Validation on {len(df)} tea farming samples...")
 
-    Question: {question}
-    Correct Ground Truth: {ground_truth}
-    Chatbot Answer: {generated_answer}
+    results = []
+    correct_count = 0
 
-    Task: Is the Chatbot Answer factually consistent with the Ground Truth? 
-    Respond with ONLY one word: 'CORRECT' or 'INCORRECT'.
-    """
-    try:
-        response = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.1-8b-instant",  # Using a faster/cheaper model for judging
-        )
-        return response.choices[0].message.content.strip().upper()
-    except:
-        return "ERROR"
+    # Initialize the LangChain Correctness Evaluator
+    # This uses a "Judge" to compare the bot's answer to the Ground Truth
+    evaluator = load_evaluator("labeled_criteria", criteria="correctness", llm=None)
+    # Note: For a custom judge prompt like yours, we use your existing judge logic:
+
+    for idx, row in df.iterrows():
+        question = row['question']
+        ground_truth = row['answer']
+
+        # Step A: Get the Chatbot's Answer using your LangChain Chain
+        try:
+            generated_answer = chain.invoke(question)
+        except Exception as e:
+            generated_answer = f"ERROR: {e}"
+
+        # Step B: LLM Judge Logic
+        verdict_prompt = f"""
+        Judge the following farming advice.
+        QUESTION: {question}
+        GROUND TRUTH: {ground_truth}
+        BOT ANSWER: {generated_answer}
+
+        Is the BOT ANSWER factually consistent with the GROUND TRUTH? 
+        Respond ONLY with 'CORRECT' or 'INCORRECT'.
+        """
+
+        try:
+            judge_res = judge_llm.chat.completions.create(
+                messages=[{"role": "user", "content": verdict_prompt}],
+                model="llama-3.1-8b-instant"
+            )
+            verdict = judge_res.choices[0].message.content.strip().upper()
+        except:
+            verdict = "ERROR"
+
+        if "CORRECT" in verdict:
+            correct_count += 1
+
+        results.append({
+            "Question": question,
+            "Ground Truth": ground_truth,
+            "Bot Answer": generated_answer,
+            "Verdict": verdict
+        })
+        print(f"[{idx + 1}/{len(df)}] Verdict: {verdict}")
+
+    # 3. FINAL METRICS
+    accuracy = (correct_count / len(df)) * 100
+    print(f"\n" + "=" * 30)
+    print(f"FINAL ACCURACY: {accuracy:.2f}%")
+    print("=" * 30)
+
+    # 4. SAVE REPORT
+    report_df = pd.DataFrame(results)
+    report_df.to_csv("accuracy_report.csv", index=False)
+    print("Report saved to 'accuracy_report.csv'")
 
 
-# 2. RUN SAMPLES
-df = pd.read_csv('dataset.csv')
-print(f"Starting Simplified Validation on {len(df)} samples...")
-
-results = []
-correct_count = 0
-
-for idx, row in df.iterrows():
-    q = row['question']
-    gt = row['answer']
-
-    # Get Chatbot Response
-    ans = ask_llm_with_rag(q)
-
-    # Judge the response
-    verdict = get_llm_judge_score(q, gt, ans)
-
-    if "CORRECT" in verdict:
-        correct_count += 1
-
-    results.append({
-        "Question": q,
-        "Ground Truth": gt,
-        "Chatbot Answer": ans,
-        "Judge Verdict": verdict
-    })
-    print(f"[{idx + 1}/{len(df)}] Verdict: {verdict}")
-
-# 3. SHOW FINAL ACCURACY
-accuracy = (correct_count / len(df)) * 100
-print(f"\n{'=' * 30}")
-print(f"FINAL ACCURACY: {accuracy:.2f}%")
-print(f"{'=' * 30}")
-
-# 4. SAVE TO CSV
-pd.DataFrame(results).to_csv("simple_accuracy_report.csv", index=False)
-print("Detailed report saved to 'simple_accuracy_report.csv'")
+if __name__ == "__main__":
+    validate_bot()
