@@ -74,6 +74,7 @@ def validate_bot():
     report_df = pd.DataFrame(results)
     report_df.to_csv("accuracy_report.csv", index=False)
     print("Report saved to 'accuracy_report.csv'")
+    #checkkkk
 
 
 if __name__ == "__main__":
