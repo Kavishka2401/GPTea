@@ -132,11 +132,7 @@ st.markdown("""
     
     .center-text {
         text-align: center;
-    }
-    .main-content {
-        padding-left: 10rem !important;  /* All sides indented 2rem (adjust as needed) */
-        margin: 0 auto;           /* Centers it horizontally */
-    }   
+    }  
     </style>
 """, unsafe_allow_html=True)
 
@@ -154,7 +150,9 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-with st.container():
+# --- Main Content with Column Indentation ---
+col1, col_left_gap, col_main, col_right_gap, col5 = st.columns([0.25, 0.25, 7, 0.25, 0.25])
+with col_main:
     st.markdown('<div class="main-content">', unsafe_allow_html=True)
     # --- Title ---
     st.title("Tea Yield Prediction System")
@@ -342,4 +340,3 @@ st.markdown("""
 <p class="center-text">© 2025 GPTea Research Project. All rights reserved.</p>
 </div>
 """, unsafe_allow_html=True)
-
