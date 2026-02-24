@@ -22,118 +22,134 @@ st.set_page_config(page_title="Tea Yield Prediction System",page_icon=str(favico
 
 # --- Custom CSS for Borders, Colors, and White Background ---
 st.markdown("""
-    <style>
-    /* Full page white background */
-    .stApp { background-color: white; }
+<style>
+/* Full page white background */
+.stApp { background-color: white; }
 
-    /* Main title color */
-    h1 { color: #1B4332 !important; }
+/* Main title color */
+h1 { color: #1B4332 !important; }
+/* Feature labels in black */
+label { color: black !important; font-weight: 500; }
 
-    /* Feature labels in black */
-    label { color: black !important; font-weight: 500; }
+/* Number input styling */
+input[type="number"] {
+    background-color: white !important;
+    color: black !important;
+    border: 1px solid #d3d3d3 !important;
+    border-radius: 6px;
+    padding: 5px;
+    box-shadow: none !important;
+}
 
-    /* Number input styling */
-    input[type="number"] {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #d3d3d3 !important;
-        border-radius: 6px;
-        padding: 5px;
-        box-shadow: none !important;
-    }
-    div[data-baseweb="input"] { padding: 0 !important; margin: 0 !important; }
+div[data-baseweb="input"] { 
+    padding: 0 !important; 
+    margin: 0 !important; 
+}
 
-    /* Headings */
-    .section-heading {
-        color: #1B4332;
-        font-weight: bold;
-        font-size: 1.2rem;
-        margin-bottom: 5px;
-    }
+/* Headings */
+.section-heading {
+    color: #1B4332;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+}
 
-    /* Columns spacing */
-    .section-content { padding-left: 0px; margin-bottom: 15px; }
+/* Columns spacing */
+.section-content { 
+    padding-left: 0px; 
+    margin-bottom: 15px; 
+}
 
-    /* Selectbox styling */
-    .stSelectbox div[data-baseweb="select"] {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #d3d3d3 !important;
-        border-radius: 6px !important;
-        min-height: 38px !important;
-    }
-    .stSelectbox div[data-baseweb="select"] > div { background-color: white !important; color: black !important; }
-    .stSelectbox svg { fill: #1B4332 !important; opacity: 1 !important; }
-    .stSelectbox div[data-baseweb="select"]:hover { border: 1px solid #1B4332 !important; }
+/* Selectbox styling */
+.stSelectbox div[data-baseweb="select"] {
+    background-color: white !important;
+    color: black !important;
+    border: 1px solid #d3d3d3 !important;
+    border-radius: 6px !important;
+    min-height: 38px !important;
+}
+.stSelectbox div[data-baseweb="select"] > div { background-color: white !important; color: black !important; }
+.stSelectbox svg { fill: #1B4332 !important; opacity: 1 !important; }
+.stSelectbox div[data-baseweb="select"]:hover { border: 1px solid #1B4332 !important; }
     
-    .header {
-        position: sticky;          /* Stays at top when scrolling */
-        top: 0;                    /* Sticky offset from top */
-        z-index: 999;              /* Sits above other elements */
-        background-color: #1B4332; /* Dark green background */
-        padding: 10px 10px;        /* Top/Bottom 10px, Left/Right 10px */
-        color: white;              /* Default text color inside header */
-        display: flex;             /* Flex layout for horizontal alignment */
-        justify-content: space-between; /* Space between logo and links */
-        align-items: center;       /* Vertically center contents */
-        height: 70px;              /* Fixed header height */
-        }
+.header {
+    position: sticky;          
+    top: 0;                   
+    z-index: 999;              
+    background-color: #1B4332; 
+    padding: 10px 10px;        
+    color: white;              
+    display: flex;             
+    justify-content: space-between; 
+    align-items: center;      
+    height: 70px;             
+}
     
-    .logo {
-        display: block;       /* Prevents inline image spacing */
-        height: 100%;         /* Fills the height of parent (70px) */
-        width: auto;          /* Maintains aspect ratio */
-        object-fit: contain;  /* Scales without cropping */
-        margin: 0;
-        padding: 0;
-    }
+.logo {
+    display: block;       
+    height: 100%;         
+    width: auto;          
+    object-fit: contain; 
+    margin: 0;
+    padding: 0;
+}
 
-    .header a {
-        color: white;          /* White text for links */
-        text-decoration: none; /* No underline */
-        margin-left: 20px;     /* Space between links */
-        font-weight: bold;     /* Bold text */
-    }
+.header a {
+    color: white;          
+    text-decoration: none;
+    margin-left: 20px;     
+    font-weight: bold;     
+}
 
-    .header a:hover {
-        color: #D8F3DC;        /* Light green on hover */
-    }
-    /* Add padding back to the main content only */
+.header a:hover {
+    color: #D8F3DC;     
+}
+
+/* Ensure the header stays full width (keep your existing block-container code) */
+.block-container {
+    padding: 0rem !important;
+    max-width: 100% !important;
+}
     
-    /* Ensure the header stays full width (keep your existing block-container code) */
-    .block-container {
-        padding: 0rem !important;
-        max-width: 100% !important;
-    }
+/* Footer */
+.footer {
+    background-color: #1B4332;
+    color: white;
+    padding: 20px;
+}
     
-    /* Footer */
-    .footer {
-        background-color: #1B4332;
-        color: white;
-        padding: 20px;
-    }
+.footer p, .footer a {
+    color: white;
+}
     
-    .footer p, .footer a {
-        color: white;
-    }
-    /* Layout helpers */
-    .flex-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-left: auto;
-    }
+.footer-link {
+    text-decoration: none !important; 
+    cursor: pointer;
+}
     
-    .flex-around {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-    }
+.footer-link:hover {
+    color: Grey;
+    text-decoration: none !important; 
+}
+
+/* Layout helpers */
+.flex-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-left: auto;
+}
     
-    .center-text {
-        text-align: center;
-    }  
-    </style>
+.flex-around {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+    
+.center-text {
+    text-align: center;
+}  
+</style>
 """, unsafe_allow_html=True)
 
 # Header Section
@@ -326,17 +342,32 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("---")
 st.markdown("""
 <div class="footer">
-<div class="flex-around">
-<div>
-<b>GPTea</b><br>AI platform for Sri Lankan farmers
-</div>
-<div>
-<b>Quick Link</b><br>Home | Innovation | Research Team
-</div>
-<div>
-<b>Resources</b><br>Documentation | Research Paper | Dataset
-</div>
-</div>
-<p class="center-text">© 2025 GPTea Research Project. All rights reserved.</p>
+    <div class="flex-around">
+        <div>
+            <b><p style="font-size:25px">GPTea</b></p>
+           <p style="font-size:18px; max-width: 300px; line-height: 1.4;">
+                AI platform for Sri Lankan tea industrials to predict tea yield, 
+                detect diseases in leaves and clarify doubts with Chatbot.
+           </p>
+        </div>
+        <div>
+            <b><p style="font-size:20px">Quick Links</b><br></p>
+            <p>
+                <a href="#" class="footer-link">Home</a> | 
+                <a href="#" class="footer-link">Innovation</a> | 
+                <a href="#" class="footer-link">Research Team</a>
+            </p>
+        </div>
+        <div>
+            <b><p>Resources</b><br></p>
+            <p>
+                <a href="#" class="footer-link">Documentation</a> | 
+                <a href="#" class="footer-link">Research Paper</a> | 
+                <a href="#" class="footer-link">Dataset</a>
+            </p>
+        </div>
+    </div>
+    <br>
+    <p class="center-text">© 2026 GPTea Research Project. All rights reserved.</p>
 </div>
 """, unsafe_allow_html=True)
