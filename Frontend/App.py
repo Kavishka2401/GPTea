@@ -77,7 +77,7 @@ st.markdown(
         margin: 0;
       }
 
-      /* Make "Detect Disease" title green */
+      /*"Detect Disease" title green */
       .detect-title{
         color: var(--green) !important;
         font-weight: 800 !important;
@@ -93,7 +93,7 @@ st.markdown(
         margin: 12px 20px 0 20px;
       }
 
-      /* Footer flush */
+      /* Footer  */
       .footer-space{
         height: 110px;
         width: 100vw; 
@@ -121,7 +121,7 @@ div[data-testid="stFileUploader"] button{
   padding: 0.7rem 1.4rem !important;
 }
 
-      /* ---- Buttons (force Streamlit buttons) ---- */
+      /* Buttons (force Streamlit buttons)*/
       div.stButton > button{
         border-radius: 999px !important;
         background: var(--light) !important;
