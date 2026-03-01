@@ -7,6 +7,7 @@ import base64
 from groq import Groq
 from fpdf import FPDF
 from io import BytesIO
+from datetime import datetime
 
 # Page Config
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,33 +20,100 @@ logo_path = BASE_DIR / "assets" / "logo_white_cropped.png"
 with open(logo_path, "rb") as img_file:
     logo_base64 = base64.b64encode(img_file.read()).decode()
 
+
+class PDF(FPDF):
+    def __init__(self, logo_path):
+        super().__init__()
+        self.logo_path = logo_path
+
+    def header(self):
+        # WATERMARK (on every page)
+        if self.logo_path.exists() and hasattr(self, 'local_context'):
+            with self.local_context(fill_opacity=0.1):
+                self.image(str(self.logo_path), x=45, y=80, w=120)
+        elif self.logo_path.exists():
+            self.image(str(self.logo_path), x=45, y=80, w=120)
+
+        # HEADER LOGO (ONLY first page)
+        if self.page_no() == 1 and self.logo_path.exists():
+            self.image(str(self.logo_path), x=10, y=8, w=50)
+
+
 def generate_pdf_report(
-    T200, U709, Epson, Dolomite, Urea, BioShield,
-    temperature_2m_mean, rain_sum, wind_speed_10m_mean, et0_fao_evapotranspiration,
-    Dolomite_moisture, YPH_lag1, YPH_lag12, Compost_lag1,
-    predicted_yph, explanation_text, year=None, month=None
+        T200, U709, Epson, Dolomite, Urea, BioShield,
+        temperature_2m_mean, rain_sum, wind_speed_10m_mean, et0_fao_evapotranspiration,
+        Dolomite_moisture, YPH_lag1, YPH_lag12, Compost_lag1,
+        predicted_yph, explanation_text, year=None, month=None
 ):
-    pdf = FPDF()
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    logo_path = BASE_DIR / "assets" / "logo_white_cropped.png"
+
+    pdf = PDF(logo_path)
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    pdf.set_auto_page_break(auto=True, margin=15)
 
-    pdf.cell(0, 10, f"Tea Yield Report - {month}/{year}" if month and year else "Tea Yield Report", ln=True)
+    # Date and Time
+    pdf.set_font("Arial", size=10)
+    current_date = datetime.now().strftime("%d/%m/%Y")
+    current_time = datetime.now().strftime("%H:%M:%S")
+    pdf.set_y(8)
+    pdf.cell(0, 5, f"Date: {current_date}", ln=1, align='R')
+    pdf.cell(0, 5, f"Time: {current_time}", ln=1, align='R')
+
+    pdf.ln(15)
+
+    pdf.set_font("Arial", 'B', 14)
+    pdf.cell(0, 10, "Tea Yield Prediction Report", ln=True)
     pdf.ln(5)
 
-    pdf.cell(0, 10, f"Predicted YPH: {predicted_yph:.2f}", ln=True)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.set_text_color(0, 102, 204)
+    pdf.cell(0, 10, f"Predicted Yield Per Hectare (YPH): {predicted_yph}", ln=1)
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(2)
+
+    pdf.set_font("Arial", size=11)
+    pdf.cell(95, 8, f"Year - {year if year else 'N/A'}", ln=0)
+    pdf.cell(95, 8, f"Month - {month if month else 'N/A'}", ln=1)
     pdf.ln(5)
 
-    pdf.multi_cell(0, 10, "Explanation:\n" + explanation_text)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 8, "Weather Data", ln=1)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(95, 8, f"Temperature (Mean, 2m): {temperature_2m_mean} C", ln=0)
+    pdf.cell(95, 8, f"Wind Speed (10m): {wind_speed_10m_mean} m/s", ln=1)
+    pdf.cell(95, 8, f"Rainfall (Total): {rain_sum} mm", ln=0)
+    pdf.cell(95, 8, f"Evapotranspiration: {et0_fao_evapotranspiration} mm/day", ln=1)
     pdf.ln(5)
 
-    pdf.multi_cell(0, 10, "Input Variables:\n" +
-                   f"T200: {T200}, U709: {U709}, Epson: {Epson}, Dolomite: {Dolomite}, Urea: {Urea}, BioShield: {BioShield}\n" +
-                   f"Temperature: {temperature_2m_mean}, Rainfall: {rain_sum}, Wind speed: {wind_speed_10m_mean}, Evapotranspiration: {et0_fao_evapotranspiration}\n" +
-                   f"Dolomite Moisture: {Dolomite_moisture}, YPH_lag1: {YPH_lag1}, YPH_lag12: {YPH_lag12}, Compost_lag1: {Compost_lag1}"
-                  )
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 8, "Fertilizer Data", ln=1)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(95, 8, f"T200: {T200} kg", ln=0)
+    pdf.cell(95, 8, f"Epson Salt: {Epson} kg", ln=1)
+    pdf.cell(95, 8, f"U709: {U709} kg", ln=0)
+    pdf.cell(95, 8, f"Dolomite: {Dolomite} kg", ln=1)
+    pdf.cell(95, 8, f"BioShield: {BioShield} kg", ln=0)
+    pdf.cell(95, 8, f"Urea: {Urea} kg", ln=1)
+    pdf.ln(5)
 
-    # Use BytesIO with dest='S' (return string) then encode
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 8, "Historical (Lag) Data", ln=1)
+    pdf.set_font("Arial", size=10)
+    pdf.cell(95, 8, f"Last Month Compost: {Compost_lag1} kg", ln=0)
+    pdf.cell(95, 8, f"Last Year YPH: {YPH_lag12}", ln=1)
+    pdf.cell(95, 8, f"Last Month YPH: {YPH_lag1}", ln=1)
+    pdf.ln(5)
+
+    pdf.set_font("Arial", 'B', 11)
+    pdf.cell(0, 8, "Explanation & Insights", ln=1)
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 8, explanation_text)
+
+    pdf_bytes = pdf.output()
+
+    if isinstance(pdf_bytes, str):
+        pdf_bytes = pdf_bytes.encode('latin-1')
 
     pdf_buffer = BytesIO(pdf_bytes)
     pdf_buffer.seek(0)
