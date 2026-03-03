@@ -234,3 +234,8 @@ def generate_ai_explanation(pipeline, input_df):
         explanation_text = f"AI explanation unavailable: {str(e)}"
 
     return explanation_text
+
+def find_dolomite_moisture(dolomite,rain_sum,et0_fao_evapotranspiration):
+    dolomite_moisture = dolomite * (rain_sum - et0_fao_evapotranspiration)
+    return dolomite_moisture
+

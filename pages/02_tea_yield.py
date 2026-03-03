@@ -1,7 +1,7 @@
 import streamlit as st
 import base64
 from pathlib import Path
-from utils.tea_yield_model import load_model, create_input_df, generate_pdf_report, generate_ai_explanation
+from utils.tea_yield_model import load_model, create_input_df, generate_pdf_report, generate_ai_explanation, find_dolomite_moisture
 
 # --- Page Config ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -282,7 +282,7 @@ with col_main:
         st.error("Model not found. Please check your path.")
 
     if st.button("Predict Yield") and pipeline:
-        Dolomite_moisture = Dolomite * (rain_sum - et0_fao_evapotranspiration)
+        Dolomite_moisture = find_dolomite_moisture(Dolomite, rain_sum, et0_fao_evapotranspiration )
         input_df = create_input_df(T200, U709, Epson, Dolomite, Urea, BioShield,
                                    temperature_2m_mean, rain_sum, wind_speed_10m_mean, et0_fao_evapotranspiration,
                                    Dolomite_moisture, YPH_lag1, YPH_lag12, Compost_lag1)
