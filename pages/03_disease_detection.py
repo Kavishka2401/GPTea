@@ -502,12 +502,16 @@ with col_main:
     predict_btn = st.button(" Detect Disease", use_container_width=True, disabled=not st.session_state.confirmed)
     st.markdown("</div>", unsafe_allow_html=True)
 
+    if "prediction_result" not in st.session_state:
+        st.session_state.prediction_result = None
+
     if predict_btn:
         try:
             model, class_names = load_model_and_classes()
             pil_img = st.session_state.uploaded_image
 
-            result = predict_and_explain_xai_pil(
+            # Store result in session state so it persists during reruns
+            st.session_state.prediction_result = predict_and_explain_xai_pil(
                 pil_img=pil_img,
                 model=model,
                 class_names=class_names,
@@ -515,28 +519,6 @@ with col_main:
                 threshold=0.60,
                 img_size=(224, 224),
             )
-
-            st.success(f"**Disease:** {result['pred_class']}")
-            st.write(f"**Confidence:** {result['confidence']:.2%}")
-            st.write(f"**Explanation:** {result['explanation']}")
-
-            if result["low_conf_msg"]:
-                st.warning(result["low_conf_msg"])
-
-            st.write("**Top 3 predictions:**")
-            for name_i, prob_i in result["top3"]:
-                st.write(f"- {name_i}: {prob_i:.2%}")
-
-            st.write("### XAI (Grad-CAM)")
-            st.caption(f"Grad-CAM last conv layer used: `{result['last_conv_layer']}`")
-
-            c1, c2 = st.columns(2)
-
-            with c1:
-                st.image(result["overlay"], caption="Grad-CAM Overlay", width=400)
-
-            with c2:
-                st.image(result["heatmap"], caption="Heatmap (raw)", width=400)
 
         except FileNotFoundError as e:
             st.error(
@@ -548,7 +530,43 @@ with col_main:
         except Exception as e:
             st.error(f"Something went wrong while predicting: {e}")
 
+    if st.session_state.prediction_result:
+        result = st.session_state.prediction_result
+
+        st.success(f"**Disease:** {result['pred_class']}")
+        st.write(f"**Confidence:** {result['confidence']:.2%}")
+        st.write(f"**Explanation:** {result['explanation']}")
+
+        if result["low_conf_msg"]:
+            st.warning(result["low_conf_msg"])
+
+        st.write("**Top 3 predictions:**")
+        for name_i, prob_i in result["top3"]:
+            st.write(f"- {name_i}: {prob_i:.2%}")
+
+        st.write("### XAI (Grad-CAM)")
+        st.caption(f"Grad-CAM last conv layer used: `{result['last_conv_layer']}`")
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            st.image(result["overlay"], caption="Grad-CAM Overlay", width=400)
+
+        with c2:
+            st.image(result["heatmap"], caption="Heatmap (raw)", width=400)
+
+        # -------------------- Follow to Chatbot Button --------------------
+        if st.button("Follow to Chatbot", use_container_width=True):
+            st.session_state['chat_init_message'] = (
+                f"The detected disease is: {result['pred_class']}. "
+                f"Explanation: {result['explanation']}"
+            )
+            # Redirect to chatbot page
+            st.switch_page("pages/04_chatbot.py")
+
     st.markdown("</div>", unsafe_allow_html=True)
+
+
 
 # Footer
 st.markdown("---")
