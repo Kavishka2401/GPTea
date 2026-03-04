@@ -363,7 +363,7 @@ with col_main:
             """, unsafe_allow_html=True)
 
             if st.button("Chat Now", key="chat_btn", use_container_width=True):
-                st.switch_page("")
+                st.switch_page("C:\\Users\\kavis\\PycharmProjects\\GPTea\\pages\\04_chatbot.py")
 
     # Research Innovation Section
     st.markdown("<a name='innovation'></a>", unsafe_allow_html=True)

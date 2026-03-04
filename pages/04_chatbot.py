@@ -227,7 +227,7 @@ st.markdown(f"""
 <div class="header">
     <img src="data:image/png;base64,{logo_base64}" class="logo">
     <div style="display:flex; gap:10px;">
-        <a href="#">Home</a>
+        <a href="C:\\Users\\kavis\\PycharmProjects\\GPTea\\pages\\home.py">Home</a>
         <a href="#"></a>
         <a href="#"></a>
         <a href="#"></a>
