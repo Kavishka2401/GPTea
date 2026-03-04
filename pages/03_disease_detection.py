@@ -300,15 +300,16 @@ div[data-testid="stNotificationContent"] {
 """,
     unsafe_allow_html=True,
 )
+
 # Header Section
 st.markdown(f"""
 <div class="header">
     <img src="data:image/png;base64,{logo_base64}" class="logo">
     <div style="display:flex; gap:10px;">
         <a href="/home" target="_self">Home</a>
-        <a href="#"></a>
-        <a href="#"></a>
-        <a href="#"></a>
+        <a href="/tea_yield" target="_self">Yield Prediction Page</a>
+        <a href="/disease_detection" target="_self">Disease Detection Page</a>
+        <a href="/chatbot" target="_self">Chatbot Page</a>
         <a href="#"></a>
     </div>
 </div>

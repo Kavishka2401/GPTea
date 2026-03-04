@@ -4,10 +4,9 @@ from pathlib import Path
 from utils.tea_yield_model import load_model, create_input_df, generate_pdf_report, generate_ai_explanation, find_dolomite_moisture
 
 # --- Navigation Helper ---
-# If user clicked "Dive Deep into AI", we set a flag and select page automatically
 if st.session_state.get("navigate_to_chat", False):
-    st.session_state["navigate_to_chat"] = False  # reset flag
-    st.session_state["current_page"] = "04_chatbot"  # name of Chatbot page
+    st.session_state["navigate_to_chat"] = False
+    st.session_state["current_page"] = "04_chatbot"
 
 # --- Page Config ---
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -211,9 +210,9 @@ st.markdown(f"""
     <img src="data:image/png;base64,{logo_base64}" class="logo">
     <div style="display:flex; gap:10px;">
         <a href="/home" target="_self">Home</a>
-        <a href="#"></a>
-        <a href="#"></a>
-        <a href="#"></a>
+        <a href="/tea_yield" target="_self">Yield Prediction Page</a>
+        <a href="/disease_detection" target="_self">Disease Detection Page</a>
+        <a href="/chatbot" target="_self">Chatbot Page</a>
         <a href="#"></a>
     </div>
 </div>
