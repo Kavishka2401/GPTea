@@ -259,7 +259,7 @@ st.markdown(f"""
 <div class="header">
     <img src="data:image/png;base64,{logo_base64}" class="logo">
     <div style="display:flex; gap:20px;">
-        <a href="#home">Home</a>
+        <a href="/home" target="_self">Home</a>
         <a href="#what">What is GPTea</a>
         <a href="#components">Components</a>
         <a href="#innovation">Research Innovation</a>
