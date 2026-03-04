@@ -121,7 +121,7 @@ div[data-testid="stFileUploader"] button{
   padding: 0.7rem 1.4rem !important;
 }
 
-      /* Buttons (force Streamlit buttons)*/
+      /* Buttons */
       div.stButton > button{
         border-radius: 999px !important;
         background: var(--light) !important;
@@ -389,5 +389,5 @@ if predict_btn:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Footer green space (blank)
+# Footer green space
 st.markdown('<div class="footer-space"></div>', unsafe_allow_html=True)
