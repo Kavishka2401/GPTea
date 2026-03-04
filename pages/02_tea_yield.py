@@ -3,6 +3,12 @@ import base64
 from pathlib import Path
 from utils.tea_yield_model import load_model, create_input_df, generate_pdf_report, generate_ai_explanation, find_dolomite_moisture
 
+# --- Navigation Helper ---
+# If user clicked "Dive Deep into AI", we set a flag and select page automatically
+if st.session_state.get("navigate_to_chat", False):
+    st.session_state["navigate_to_chat"] = False  # reset flag
+    st.session_state["current_page"] = "04_chatbot"  # name of Chatbot page
+
 # --- Page Config ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 favicon_path = BASE_DIR / "assets" / "favicon_zoom.ico"
@@ -131,28 +137,12 @@ div[data-baseweb="input"] {
     max-width: 100% !important;
 }
 
-/* Target the button by its label text or general button style */
-div.stButton > button {
-    background-color: #1B4332;
-    color: white;
-    border-radius: 5px;
-    border: none;
-    height: 2em;
-    width: 100%;
-    font-weight: bold;
-}
-
-/* Hover effect */
-div.stButton > button:hover {
-    background-color: #2D6A4F !important;
-    color: white !important;
-    border: none;
-}
-
+/* Make all buttons same height & full width */
+div.stButton > button,
 div.stDownloadButton > button {
     background-color: #1B4332;
     color: white;
-    border-radius: 8px;
+    border-radius: 5px;
     border: none;
     height: 2.5em;
     width: 100%;
@@ -160,14 +150,16 @@ div.stDownloadButton > button {
 }
 
 /* Hover effect */
+div.stButton > button:hover,
 div.stDownloadButton > button:hover {
     background-color: #2D6A4F !important;
     color: white !important;
     border: none;
 }
-   
-/* Active/Click effect */
-div.stButton > button:active {
+
+/* Active effect */
+div.stButton > button:active,
+div.stDownloadButton > button:active {
     background-color: #76c776;
     color: #000000;
 }
@@ -301,6 +293,23 @@ with col_main:
         explanation_text = st.session_state['explanation_text']
         Dolomite_moisture = st.session_state['Dolomite_moisture']
 
+        st.session_state['last_yield_input'] = {
+            "T200": T200,
+            "U709": U709,
+            "Epson": Epson,
+            "Dolomite": Dolomite,
+            "Urea": Urea,
+            "BioShield": BioShield,
+            "temperature_2m_mean": temperature_2m_mean,
+            "rain_sum": rain_sum,
+            "wind_speed_10m_mean": wind_speed_10m_mean,
+            "et0_fao_evapotranspiration": et0_fao_evapotranspiration,
+            "Compost_lag1": Compost_lag1,
+            "YPH_lag1": YPH_lag1,
+            "YPH_lag12": YPH_lag12,
+            "predicted_yph": st.session_state['predicted_yph']
+        }
+
         st.markdown(f"""
             <div style="color: #1B4332; font-weight:bold; font-size:1.6rem; margin-top:15px; margin-bottom:5px;">
                 Predicted YPH: {predicted_yph:.2f} kg
@@ -319,7 +328,28 @@ with col_main:
             predicted_yph, explanation_text, year, month
         )
 
-        st.download_button("Download PDF Report", pdf_buffer, file_name=filename, mime="application/pdf")
+        # Create two columns for buttons
+        btn_col1, btn_col2, _ = st.columns([1, 1.2, 5])
+
+        with btn_col1:
+            st.download_button(
+                "Download PDF Report",
+                pdf_buffer,
+                file_name=filename,
+                mime="application/pdf",
+                key="download_pdf"
+            )
+
+        with btn_col2:
+            if st.button("Follow to Chatbot"):
+                # Store the message for chatbot
+                st.session_state['chat_init_message'] = (
+                    f"The predicted yield is {st.session_state['predicted_yph']:.2f} kg/ha. "
+                    f"Here’s the explanation: {st.session_state['explanation_text']}. "
+                    "Please give further recommendations or insights."
+                )
+                # Redirect to chatbot page
+                st.switch_page("pages/04_chatbot.py")
 
 # Footer
 st.markdown("---")
@@ -354,4 +384,3 @@ st.markdown("""
     <p class="center-text">© 2026 GPTea Research Project. All rights reserved.</p>
 </div>
 """, unsafe_allow_html=True)
-

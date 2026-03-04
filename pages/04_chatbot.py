@@ -6,6 +6,13 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
+# Show initial message from Yield page
+if "chat_init_message" in st.session_state:
+    init_msg = st.session_state.pop("chat_init_message")
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    st.session_state.messages.append({"role": "user", "content": init_msg})
+
 # --- Page Config ---
 BASE_DIR = Path(__file__).resolve().parent.parent
 favicon_path = BASE_DIR / "assets" / "favicon_zoom.ico"
