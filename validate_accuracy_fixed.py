@@ -2,8 +2,8 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 from groq import Groq
-from langchain_core.evaluation import load_evaluator
-from chatbot_openai import chain  # Import your new LangChain chain
+from langchain_core evaluation import load_evaluator
+from chatbot_openai import chain
 
 # 1. SETUP
 load_dotenv()

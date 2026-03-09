@@ -7,6 +7,7 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from rag_retrieval import retrieve_docs
 
 # --- 1. CORE CONFIGURATION ---
 load_dotenv()
@@ -109,15 +110,29 @@ st.markdown("""
 
 
 # --- 3. BACKEND AI LOGIC ---
-def get_context(query):
-    return "Sri Lankan tea estate expert knowledge base."
+def get_context(query: str) -> str:
+    """Retrieve grounded context from domain.csv via RAG pipeline."""
+    try:
+        docs = retrieve_docs(query, k=3)
+        # retrieve_docs returns a dict on error/no-match, list on success
+        if isinstance(docs, dict):
+            return docs.get("message", "No relevant context found in knowledge base.")
+        context_parts = []
+        for doc in docs:
+            print(f"[RAG] Matched: {doc['question']} (score: {doc['score']})")
+            context_parts.append(f"Q: {doc['question']}\nA: {doc['answer']}")
+        return "\n\n---\n\n".join(context_parts)
+    except Exception as e:
+        return f"Knowledge base unavailable: {str(e)}"
 
 
 # Primary LLM (Groq Only)
 smart_llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
 
-template = """You are a professional Sri Lankan tea estate advisor. 
-Answer the following farmer query using the context provided.
+template = """You are GPTea, an AI assistant for Sri Lankan tea estate farmers.
+Answer the farmer's query using ONLY the context provided below.
+If the context does not contain enough information, say so clearly.
+Do NOT roleplay as a human or offer to visit the farm.
 CONTEXT: {context}
 QUESTION: {question}
 ANSWER:"""
