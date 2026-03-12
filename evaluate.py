@@ -1,22 +1,7 @@
-#!/usr/bin/env python3
-"""
-evaluate_gemini.py — GPTea LLM-as-Judge using Google Gemini (Free Tier)
 
-Usage:
-    python evaluate_gemini.py
-    python evaluate_gemini.py --kb data/domain.csv
-    python evaluate_gemini.py --save-report results.json
 
-Requirements:
-    pip install google-genai sentence-transformers scikit-learn rapidfuzz symspellpy numpy pandas python-dotenv
-
-Your .env must contain:
-    GOOGLE_API_KEY=your_key_here
-"""
-
-import argparse, time, json, os
-import numpy as np
-from sklearn.preprocessing import normalize as sk_normalize
+import argparse
+import json
 
 try:
     from dotenv import load_dotenv
@@ -24,268 +9,343 @@ try:
 except ImportError:
     pass
 
-try:
-    from google import genai
-except ImportError:
-    raise ImportError("Run: pip install google-genai")
 
-KB_PATH = "data/domain.csv"
-DEFAULT_JUDGE_MODEL = "gemini-2.0-flash"
+SAMPLE_CASES = [
+    (
+        "My soil is too alkaline, what should I do?",
+        ["acid", "pH"],
+        "Soil & pH", True
+    ),
+    (
+        "What pH level is best for growing tea?",
+        ["4.5", "5.5"],
+        "Soil & pH", True
+    ),
+    (
+        "How do I improve the organic content of my soil?",
+        ["compost", "mulch"],
+        "Soil & pH", True
+    ),
 
-UNSEEN_TESTS = [
-    ("What pH level is best for growing tea?",               "Soil & pH"),
-    ("My soil is too alkaline, what should I do?",           "Soil & pH"),
-    ("How acidic should the soil be for tea?",               "Soil & pH"),
-    ("What happens if soil pH is too high for tea?",         "Soil & pH"),
-    ("How do I improve the health of my soil?",              "Soil & pH"),
-    ("What nutrients does a tea plant need?",                "Fertilizer"),
-    ("My plants are not growing fast, what fertilizer?",     "Fertilizer"),
-    ("Can I use natural compost on tea?",                    "Fertilizer"),
-    ("How many times a year should I fertilize?",            "Fertilizer"),
-    ("What does potassium do for tea plants?",               "Fertilizer"),
-    ("There are tiny bugs under my leaves, what is it?",     "Pests"),
-    ("My young shoots are turning brown and dying",          "Pests"),
-    ("White spots appearing on my tea leaves",               "Pests"),
-    ("How do I get rid of insects without chemicals?",       "Pests"),
-    ("Leaves are falling off my tea bushes",                 "Pests"),
-    ("How much water do tea plants need in dry weather?",    "Irrigation"),
-    ("Is drip watering good for tea farms?",                 "Irrigation"),
-    ("How do I stop my field from flooding?",                "Irrigation"),
-    ("Does the pH of my water matter for tea?",              "Irrigation"),
-    ("How do I know when to water my tea plants?",           "Irrigation"),
-    ("Why am I getting less tea than last year?",            "Yield"),
-    ("How can I get more leaves per bush?",                  "Yield"),
-    ("Does the age of the bush affect how much I harvest?",  "Yield"),
-    ("Will cutting my bushes reduce my harvest?",            "Yield"),
-    ("How much tea can I expect per acre?",                  "Yield"),
-    ("Is hot weather bad for my tea plants?",                "Climate"),
-    ("How does rain affect tea production?",                 "Climate"),
-    ("My area has low rainfall, will tea survive?",          "Climate"),
-    ("Does growing tea at high altitude change the taste?",  "Climate"),
-    ("How does moisture in the air affect disease?",         "Climate"),
+    # --- Fertilizer ---
+    (
+        "My plants are not growing fast, what fertilizer should I use?",
+        ["nitrogen", "fertiliz"],
+        "Fertilizer", True
+    ),
+    (
+        "Can I use natural compost instead of chemical fertilizer?",
+        ["compost", "nitrogen"],
+        "Fertilizer", True
+    ),
+    (
+        "When is the worst time to apply fertilizer?",
+        ["rain", "drought"],
+        "Fertilizer", True
+    ),
+
+    # --- Pests & Disease ---
+    (
+        "There are tiny bugs under my leaves, what could it be?",
+        ["mite", "pest"],
+        "Pests & Disease", True
+    ),
+    (
+        "White spots are appearing on my tea leaves",
+        ["blight", "fungal"],
+        "Pests & Disease", True
+    ),
+    (
+        "How do I get rid of insects without using chemicals?",
+        ["neem", "organic"],
+        "Pests & Disease", True
+    ),
+    (
+        "My tea shoots are drying and turning brown at the tips",
+        ["mosquito", "pest"],
+        "Pests & Disease", True
+    ),
+
+    # --- Irrigation ---
+    (
+        "How much water do tea plants need in dry weather?",
+        ["irrigat", "water"],
+        "Irrigation", True
+    ),
+    (
+        "Is drip watering good for tea farms?",
+        ["drip", "water"],
+        "Irrigation", True
+    ),
+    (
+        "How do I stop my field from flooding after rain?",
+        ["drain", "water"],
+        "Irrigation", True
+    ),
+
+    # --- Yield ---
+    (
+        "Why am I getting less tea than last year?",
+        ["yield", "prune"],
+        "Yield", True
+    ),
+    (
+        "How can I get more leaves per bush?",
+        ["pluck", "prune"],
+        "Yield", True
+    ),
+
+    # --- Climate ---
+    (
+        "Is hot weather bad for my tea plants?",
+        ["temperature", "heat"],
+        "Climate", True
+    ),
+    (
+        "How does rain affect tea production?",
+        ["rain", "yield"],
+        "Climate", True
+    ),
+
+    # --- Out of Scope ---
+    (
+        "What is the best recipe for milk tea?",
+        [],
+        "Out of Scope", False
+    ),
+    (
+        "How do I repair my irrigation pump motor?",
+        [],
+        "Out of Scope", False
+    ),
+    (
+        "What is the weather forecast for this week?",
+        [],
+        "Out of Scope", False
+    ),
+    (
+        "How do I get a government subsidy for my farm?",
+        [],
+        "Out of Scope", False
+    ),
+    (
+        "Can you teach me how to cook rice?",
+        [],
+        "Out of Scope", False
+    ),
 ]
 
-_df = _model = _kb_embeddings = None
+
+DECLINE_KEYWORDS = [
+    "not enough information in the context",
+    "context provided does not contain",
+    "context does not contain",
+    "there is not enough information",
+    "there is no information",
+    "does not contain enough information",
+    "not contain enough",
+    "only discusses",
+    "context only discusses",
+    "outside the scope",
+    "not related to tea",
+    "not relevant",
+    "not covered",
+    "not able",
+    "cannot answer",
+    "unable to",
+    "no information provided",
+    "not enough information",
+    "does not contain",
+    "outside",
+]
 
 
-def init_rag(kb_path=KB_PATH):
-    global _df, _model, _kb_embeddings
-    print("  [RAG] Loading knowledge base and embedding model...")
-    t0 = time.perf_counter()
-    from rag_retrieval import load_knowledge_base, get_model_and_embeddings
-    _df = load_knowledge_base(kb_path)
-    _model, _kb_embeddings = get_model_and_embeddings(_df)
-    print(f"  [RAG] Ready in {time.perf_counter() - t0:.2f}s\n")
+def score_response(response: str, must_contain: list, should_answer: bool) -> dict:
+    resp_lower = response.lower()
 
-
-def fast_retrieve(query, k=3):
-    from rag_retrieval import correct_text, fuzzy_fallback
-    qc = correct_text(query)
-    if len(qc) < 2:
-        return []
-    q_emb = sk_normalize(_model.encode([qc], convert_to_numpy=True), axis=1)
-    sims = np.dot(_kb_embeddings, q_emb.T).squeeze()
-    if np.isscalar(sims):
-        sims = np.array([sims])
-    top_idx = sims.argsort()[-min(k, len(sims)):][::-1]
-    results = []
-    for idx in top_idx:
-        score = float(sims[idx])
-        row = _df.iloc[idx]
-        if score < 0.45:
-            fb = fuzzy_fallback(qc, _df["question_norm"].tolist())
-            if fb:
-                fbl = _df.index[_df["question_norm"] == fb].tolist()
-                if fbl:
-                    row, score = _df.loc[fbl[0]], 0.5
-                else:
-                    continue
-            else:
-                continue
-        results.append({
-            "question": row["question"],
-            "answer":   row["answer"],
-            "score":    round(score, 3)
-        })
-    return results
-
-
-PROMPT = """You are evaluating GPTea, an AI advisor for Sri Lankan tea farmers.
-Judge if the retrieved answers address the farmer's question.
-
-FARMER_QUESTION: {question}
-
-RETRIEVED_ANSWERS:
-{answers}
-
-Score on TWO criteria:
-1. RELEVANCE (0-5): Does the retrieved content relate to the topic?
-2. CORRECTNESS (0-5): Does it contain enough info to answer the question?
-
-VERDICT: PASS if BOTH relevance >= 3 AND correctness >= 3, otherwise FAIL.
-
-Reply ONLY with a JSON object. No markdown, no extra text, just raw JSON:
-{{"relevance": <0-5>, "correctness": <0-5>, "verdict": "PASS" or "FAIL", "reasoning": "<one sentence>"}}"""
-
-
-def judge(client, question, docs, model_name):
-    if not docs:
+    if not should_answer:
+        declined = any(kw in resp_lower for kw in DECLINE_KEYWORDS)
         return {
-            "relevance": 0, "correctness": 0,
-            "verdict": "FAIL", "reasoning": "No documents retrieved."
+            "passed":         not declined,  #
+            "contain_hits":   [],
+            "contain_misses": [],
+            "declined":       declined,
         }
 
-    answers = ""
-    for i, d in enumerate(docs, 1):
-        answers += f"\n[{i}] Matched Q: {d['question']}\nAnswer: {d['answer']}\nScore: {d['score']}\n"
+    contain_hits   = [kw for kw in must_contain if kw.lower() in resp_lower]
+    contain_misses = [kw for kw in must_contain if kw.lower() not in resp_lower]
+    passed = len(contain_misses) == 0
 
-    prompt = PROMPT.format(question=question, answers=answers)
+    return {
+        "passed":         passed,
+        "contain_hits":   contain_hits,
+        "contain_misses": contain_misses,
+        "declined":       False,
+    }
 
+
+
+def calculate_metrics(results: list) -> dict:
+    TP = sum(1 for r in results if r["verdict"] == "PASS" and     r["should_answer"])
+    FP = sum(1 for r in results if r["verdict"] == "PASS" and not r["should_answer"])
+    FN = sum(1 for r in results if r["verdict"] == "FAIL" and     r["should_answer"])
+    TN = sum(1 for r in results if r["verdict"] == "FAIL" and not r["should_answer"])
+
+    total     = len(results)
+    accuracy  = (TP + TN) / total                             if total > 0            else 0
+    precision = TP / (TP + FP)                                if (TP + FP) > 0        else 0
+    recall    = TP / (TP + FN)                                if (TP + FN) > 0        else 0
+    f1        = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+    return {
+        "TP": TP, "FP": FP, "FN": FN, "TN": TN,
+        "accuracy":  round(accuracy,  4),
+        "precision": round(precision, 4),
+        "recall":    round(recall,    4),
+        "f1":        round(f1,        4),
+    }
+
+
+
+def run_eval(save_path=None):
     try:
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt
-        )
-        raw = response.text.strip()
-        # Strip markdown fences if present
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        return json.loads(raw.strip())
-    except json.JSONDecodeError as e:
-        return {"relevance": 0, "correctness": 0, "verdict": "FAIL",
-                "reasoning": f"Unparseable response: {str(e)}"}
-    except Exception as e:
-        return {"relevance": 0, "correctness": 0, "verdict": "FAIL",
-                "reasoning": str(e)}
+        from tea_chain import tea_chain
+    except ImportError:
+        try:
+            from chatbot_openai import tea_chain
+        except Exception as e:
+            print(f"  ERROR: Could not load chatbot — {e}")
+            return
 
+    in_scope  = sum(1 for _, _, _, s in SAMPLE_CASES if s)
+    out_scope = sum(1 for _, _, _, s in SAMPLE_CASES if not s)
 
-def run_eval(judge_model=DEFAULT_JUDGE_MODEL, save_path=None):
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise EnvironmentError(
-            "GOOGLE_API_KEY not set. Add to your .env file:\n"
-            "GOOGLE_API_KEY=your_google_api_key_here"
-        )
-
-    client = genai.Client(api_key=api_key)
-
-    print("=" * 65)
-    print(f"  GPTea — LLM-as-Judge (Google Gemini: {judge_model})")
-    print(f"  RAG Model : all-MiniLM-L6-v2  (sentence-transformers)")
-    print("=" * 65)
-    print(f"\n  {'#':<4} {'STATUS':<6} {'REL':<5} {'COR':<5} {'RAG_T':<8} {'JDG_T':<8} CATEGORY")
-    print(f"  {'-'*65}")
+    print("=" * 68)
+    print(f"  GPTea — Sample Question Evaluation")
+    print(f"  Tests : {len(SAMPLE_CASES)} questions ({in_scope} in-scope, {out_scope} out-of-scope)")
+    print(f"  Note  : Questions are rephrased — NOT copied from domain.csv")
+    print("=" * 68)
+    print(f"\n  {'#':<4} {'RESULT':<7} {'OUTCOME':<8} CATEGORY / QUERY")
+    print(f"  {'-'*68}")
 
     results = []
-    passed = failed = no_ret = 0
-    rag_times, judge_times = [], []
 
-    for i, (query, cat) in enumerate(UNSEEN_TESTS, 1):
-        t0 = time.perf_counter()
-        docs = fast_retrieve(query)
-        rt = time.perf_counter() - t0
-        rag_times.append(rt)
-        if not docs:
-            no_ret += 1
+    for i, (query, must_contain, category, should_answer) in enumerate(SAMPLE_CASES, 1):
+        try:
+            response = tea_chain.invoke(query)
+            score    = score_response(response, must_contain, should_answer)
+            verdict  = "PASS" if score["passed"] else "FAIL"
 
-        t0 = time.perf_counter()
-        j = judge(client, query, docs, judge_model)
-        jt = time.perf_counter() - t0
-        judge_times.append(jt)
+            if   verdict == "PASS" and     should_answer: outcome = "TP"
+            elif verdict == "PASS" and not should_answer: outcome = "FP"
+            elif verdict == "FAIL" and     should_answer: outcome = "FN"
+            else:                                          outcome = "TN"
 
-        v = j.get("verdict", "FAIL")
-        r = j.get("relevance", 0)
-        c = j.get("correctness", 0)
+            results.append({
+                "n": i, "query": query, "category": category,
+                "should_answer": should_answer,
+                "verdict": verdict, "outcome": outcome,
+                "response": response,
+                "keywords_checked": must_contain,
+                **score,
+            })
 
-        if v == "PASS":
-            passed += 1
-        else:
-            failed += 1
+            icon = "✓" if verdict == "PASS" else "✗"
+            print(f"  {i:<4} {icon} {verdict:<6} {outcome:<8} {category} — {query[:52]}")
 
-        results.append({
-            "n": i, "query": query, "category": cat,
-            "relevance": r, "correctness": c, "verdict": v,
-            "reasoning": j.get("reasoning", ""),
-            "rag_time": round(rt, 3), "judge_time": round(jt, 3)
-        })
+            if verdict == "FAIL":
+                if score.get("contain_misses"):
+                    print(f"       Missing keywords : {score['contain_misses']}")
+                if not should_answer and not score["declined"]:
+                    print(f"       Answered when it should have declined")
 
-        print(f"  {i:<4} {v:<6} {r:<5} {c:<5} {rt:.3f}s   {jt:.3f}s   {cat}")
+        except Exception as e:
+            print(f"  {i:<4} ✗ ERROR          {category} — {e}")
+            results.append({
+                "n": i, "query": query, "category": category,
+                "should_answer": should_answer,
+                "verdict": "FAIL", "outcome": "FN" if should_answer else "TN",
+                "error": str(e),
+            })
 
-    # Summary
-    total = passed + failed
-    acc = passed / total * 100 if total else 0
-    all_rel = [r["relevance"] for r in results]
-    all_cor = [r["correctness"] for r in results]
+    m = calculate_metrics(results)
 
-    print(f"\n{'='*65}")
-    print(f"  RESULTS SUMMARY")
-    print(f"{'='*65}")
-    print(f"  Passed        : {passed}/{total} ({acc:.1f}%)")
-    print(f"  Failed        : {failed}/{total}")
-    print(f"  No Retrieval  : {no_ret}/{total}")
-    print(f"\n  Avg Relevance    : {np.mean(all_rel):.2f}/5")
-    print(f"  Avg Correctness  : {np.mean(all_cor):.2f}/5")
-    print(f"\n  RAG avg latency   : {np.mean(rag_times):.3f}s")
-    print(f"  Judge avg latency : {np.mean(judge_times):.3f}s")
-    print(f"  Total avg latency : {np.mean([r+j for r,j in zip(rag_times, judge_times)]):.3f}s")
+    print(f"\n{'='*68}")
+    print(f"  CONFUSION MATRIX")
+    print(f"{'='*68}")
+    print(f"                        Predicted PASS    Predicted FAIL")
+    print(f"  Actually SHOULD     |  TP = {m['TP']:<14}  FN = {m['FN']}")
+    print(f"  Actually SKIP       |  FP = {m['FP']:<14}  TN = {m['TN']}")
 
-    print(f"\n  Category Breakdown:")
-    for cat in ["Soil & pH", "Fertilizer", "Pests", "Irrigation", "Yield", "Climate"]:
-        cr = [r for r in results if r["category"] == cat]
-        cp = sum(1 for r in cr if r["verdict"] == "PASS")
-        bar = "█" * cp + "░" * (len(cr) - cp)
-        avg_r = np.mean([r["relevance"] for r in cr])
-        avg_c = np.mean([r["correctness"] for r in cr])
-        print(f"    {cat:<14}: {cp}/{len(cr)} [{bar}]  Rel:{avg_r:.1f} Cor:{avg_c:.1f}")
+    print(f"\n{'='*68}")
+    print(f"  METRICS")
+    print(f"{'='*68}")
 
-    failures = [r for r in results if r["verdict"] == "FAIL"]
-    if failures:
-        print(f"\n  Failed Cases ({len(failures)}):")
-        for f in failures:
-            print(f"\n    [{f['n']}] {f['category']} — Rel:{f['relevance']} Cor:{f['correctness']}")
-            print(f"    Q: {f['query']}")
-            print(f"    ↳ {f['reasoning']}")
+    def grade(v):
+        if v >= 0.85:   return "✓ Excellent"
+        elif v >= 0.70: return "~ Good"
+        else:           return "✗ Needs improvement"
+
+    print(f"  Accuracy   : {m['accuracy']*100:.1f}%  {grade(m['accuracy'])}")
+    print(f"  Precision  : {m['precision']*100:.1f}%  {grade(m['precision'])}")
+    print(f"  Recall     : {m['recall']*100:.1f}%  {grade(m['recall'])}")
+    print(f"  F1 Score   : {m['f1']*100:.1f}%  {grade(m['f1'])}")
+
+    print(f"\n{'='*68}")
+    print(f"  CATEGORY BREAKDOWN")
+    print(f"{'='*68}")
+    categories = list(dict.fromkeys(cat for _, _, cat, _ in SAMPLE_CASES))
+    for cat in categories:
+        cr      = [r for r in results if r["category"] == cat]
+        correct = sum(1 for r in cr if r["outcome"] in ("TP", "TN"))
+        tp = sum(1 for r in cr if r["outcome"] == "TP")
+        fp = sum(1 for r in cr if r["outcome"] == "FP")
+        fn = sum(1 for r in cr if r["outcome"] == "FN")
+        tn = sum(1 for r in cr if r["outcome"] == "TN")
+        bar = "█" * correct + "░" * (len(cr) - correct)
+        print(f"  {cat:<16}: {correct}/{len(cr)} [{bar}]  TP:{tp} FP:{fp} FN:{fn} TN:{tn}")
+
+    misses = [r for r in results if r["outcome"] in ("FP", "FN")]
+    if misses:
+        print(f"\n{'='*68}")
+        print(f"  MISCLASSIFIED CASES ({len(misses)})")
+        print(f"{'='*68}")
+        for r in misses:
+            label = "FALSE POSITIVE — answered when it should have declined" \
+                    if r["outcome"] == "FP" \
+                    else "FALSE NEGATIVE — failed to answer a valid question"
+            print(f"\n  [{r['n']}] {label}")
+            print(f"  Q        : {r['query']}")
+            if r.get("keywords_checked"):
+                print(f"  Keywords : {r['keywords_checked']}")
+            if r.get("contain_misses"):
+                print(f"  Missing  : {r['contain_misses']}")
+            if r.get("response"):
+                print(f"  Response : {r['response'][:150].strip()}...")
     else:
-        print(f"\n  ✓ PERFECT SCORE — All 30 questions passed!")
+        print(f"\n  ✓ PERFECT — No misclassifications!")
 
-    print(f"\n{'='*65}")
-    print(f"  Judge: Google Gemini {judge_model} (free tier)")
-    print(f"  Evaluates semantic correctness, not keyword matching.")
-    print(f"{'='*65}\n")
+    print(f"\n{'='*68}\n")
 
     if save_path:
-        report = {
-            "judge_model": judge_model,
-            "total": total, "passed": passed, "failed": failed,
-            "accuracy_pct": round(acc, 2),
-            "avg_relevance": round(float(np.mean(all_rel)), 3),
-            "avg_correctness": round(float(np.mean(all_cor)), 3),
-            "avg_rag_latency": round(float(np.mean(rag_times)), 3),
-            "avg_judge_latency": round(float(np.mean(judge_times)), 3),
-            "results": results,
-        }
+        report = {"metrics": m, "results": results}
         with open(save_path, "w") as f:
             json.dump(report, f, indent=2)
         print(f"  Report saved to: {save_path}\n")
 
-    return results
+    return m, results
 
 
 def main():
-    parser = argparse.ArgumentParser(description="GPTea LLM-as-Judge (Gemini)")
-    parser.add_argument("--kb",          default=KB_PATH,            help="Path to domain.csv")
-    parser.add_argument("--model",       default=DEFAULT_JUDGE_MODEL, help="Gemini model ID")
-    parser.add_argument("--save-report", default=None,               help="Save JSON report to path")
+    parser = argparse.ArgumentParser(description="GPTea Sample Question Evaluator")
+    parser.add_argument("--save-report", default=None, help="Save JSON report to path")
     args = parser.parse_args()
 
     print("\n╔══════════════════════════════════════════════════════════╗")
-    print("║  GPTea — LLM-as-Judge (Google Gemini, Free Tier)        ║")
+    print("║       GPTea — Sample Question Evaluation                ║")
     print("╚══════════════════════════════════════════════════════════╝\n")
 
-    init_rag(args.kb)
-    run_eval(judge_model=args.model, save_path=args.save_report)
+    run_eval(save_path=args.save_report)
 
 
 if __name__ == "__main__":
