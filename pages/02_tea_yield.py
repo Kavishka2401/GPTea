@@ -263,8 +263,8 @@ with col_main:
     with l_col1:
         Compost_lag1 = st.number_input("Last Month Compost (kg)", 0.0, 500.0, 0.0, 1.0)
     with l_col2:
-        YPH_lag1 = st.number_input("Last Year YPH", 0.0, 500.0, 0.0, 1.0)
-        YPH_lag12 = st.number_input("Last Month YPH", 0.0, 500.0, 0.0, 1.0)
+        YPH_lag12 = st.number_input("Last Year YPH", 0.0, 500.0, 0.0, 1.0)
+        YPH_lag1 = st.number_input("Last Month YPH", 0.0, 500.0, 0.0, 1.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Load model
