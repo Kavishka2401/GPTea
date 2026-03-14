@@ -217,4 +217,3 @@ elif st.session_state.page == "Yield":
 elif st.session_state.page == "Pest":
     render_pest()
 
-
