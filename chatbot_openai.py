@@ -1,13 +1,8 @@
 import streamlit as st
-import os
-import json
-from datetime import datetime
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from rag_retrieval import retrieve_docs
 
 # --- 1. CORE CONFIGURATION ---
 load_dotenv()
@@ -111,10 +106,9 @@ st.markdown("""
 
 # --- 3. BACKEND AI LOGIC ---
 def get_context(query: str) -> str:
-    """Retrieve grounded context from domain.csv via RAG pipeline."""
     try:
+        from rag_retrieval import retrieve_docs
         docs = retrieve_docs(query, k=3)
-        # retrieve_docs returns a dict on error/no-match, list on success
         if isinstance(docs, dict):
             return docs.get("message", "No relevant context found in knowledge base.")
         context_parts = []
@@ -126,22 +120,44 @@ def get_context(query: str) -> str:
         return f"Knowledge base unavailable: {str(e)}"
 
 
-# Primary LLM (Groq Only)
-smart_llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+def build_history(messages: list, limit: int = 6) -> str:
+    """Build a conversation history string from the last N messages."""
+    history_msgs = messages[-limit:] if len(messages) > limit else messages
+    history = ""
+    for msg in history_msgs:
+        role = "Farmer" if msg["role"] == "user" else "GPTea"
+        history += f"{role}: {msg['content']}\n"
+    return history.strip()
 
-template = """You are GPTea, an AI assistant for Sri Lankan tea estate farmers.
-Answer the farmer's query using ONLY the context provided below.
-If the context does not contain enough information, say so clearly.
+
+def get_response(user_input: str, messages: list) -> str:
+    context = get_context(user_input)
+    history = build_history(messages[:-1])  # exclude current message
+
+    template = """You are GPTea, an AI assistant for Sri Lankan tea estate farmers.
+Answer ONLY questions about tea farming, cultivation, pests, soil, fertilizer, irrigation, and yield.
+If the question is not related to tea farming, respond with:
+"This question is outside the scope of tea estate advising."
 Do NOT roleplay as a human or offer to visit the farm.
-CONTEXT: {context}
-QUESTION: {question}
-ANSWER:"""
-prompt_tpl = ChatPromptTemplate.from_template(template)
 
-tea_chain = (
-        {"context": get_context, "question": RunnablePassthrough()}
-        | prompt_tpl | smart_llm | StrOutputParser()
-)
+CONVERSATION HISTORY:
+{history}
+
+CONTEXT FROM KNOWLEDGE BASE:
+{context}
+
+CURRENT QUESTION: {question}
+ANSWER:"""
+
+    smart_llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+    prompt_tpl = ChatPromptTemplate.from_template(template)
+    chain = prompt_tpl | smart_llm | StrOutputParser()
+
+    return chain.invoke({
+        "history":  history,
+        "context":  context,
+        "question": user_input,
+    })
 
 
 # --- 4. MODULE RENDERERS ---
@@ -165,7 +181,8 @@ def render_advisor():
     if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
         with st.chat_message("assistant"):
             with st.spinner("Consulting knowledge base..."):
-                response = tea_chain.invoke(st.session_state.messages[-1]["content"])
+                user_input = st.session_state.messages[-1]["content"]
+                response = get_response(user_input, st.session_state.messages)
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
@@ -199,13 +216,13 @@ if "page" not in st.session_state:
     st.session_state.page = "Advisor"
 
 with st.sidebar:
-    st.title("🍃 GPTea Hub")
-    if st.button("💬 Advisor", use_container_width=True): st.session_state.page = "Advisor"
-    if st.button("📊 Yield", use_container_width=True): st.session_state.page = "Yield"
-    if st.button("🪲 Pest ID", use_container_width=True): st.session_state.page = "Pest"
+    st.title(" GPTea Hub")
+    if st.button(" Advisor", use_container_width=True): st.session_state.page = "Advisor"
+    if st.button(" Yield", use_container_width=True): st.session_state.page = "Yield"
+    if st.button(" Pest ID", use_container_width=True): st.session_state.page = "Pest"
 
     st.divider()
-    if st.button("🗑️ Clear Chat", use_container_width=True):
+    if st.button(" Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
@@ -216,4 +233,3 @@ elif st.session_state.page == "Yield":
     render_yield()
 elif st.session_state.page == "Pest":
     render_pest()
-

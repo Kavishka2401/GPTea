@@ -281,15 +281,12 @@ def run_eval(save_path=None):
     print(f"  METRICS")
     print(f"{'='*68}")
 
-    def grade(v):
-        if v >= 0.85:   return "✓ Excellent"
-        elif v >= 0.70: return "~ Good"
-        else:           return "✗ Needs improvement"
 
-    print(f"  Accuracy   : {m['accuracy']*100:.1f}%  {grade(m['accuracy'])}")
-    print(f"  Precision  : {m['precision']*100:.1f}%  {grade(m['precision'])}")
-    print(f"  Recall     : {m['recall']*100:.1f}%  {grade(m['recall'])}")
-    print(f"  F1 Score   : {m['f1']*100:.1f}%  {grade(m['f1'])}")
+
+    print(f"  Accuracy   : {m['accuracy']*100:.1f}%  {(m['accuracy'])}")
+    print(f"  Precision  : {m['precision']*100:.1f}%  {(m['precision'])}")
+    print(f"  Recall     : {m['recall']*100:.1f}%  {(m['recall'])}")
+    print(f"  F1 Score   : {m['f1']*100:.1f}%  {(m['f1'])}")
 
     print(f"\n{'='*68}")
     print(f"  CATEGORY BREAKDOWN")
@@ -341,9 +338,7 @@ def main():
     parser.add_argument("--save-report", default=None, help="Save JSON report to path")
     args = parser.parse_args()
 
-    print("\n╔══════════════════════════════════════════════════════════╗")
-    print("║       GPTea — Sample Question Evaluation                ║")
-    print("╚══════════════════════════════════════════════════════════╝\n")
+    print("\nGPTea — Sample Question Evaluation ")
 
     run_eval(save_path=args.save_report)
 

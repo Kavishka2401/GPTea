@@ -1,15 +1,3 @@
-"""
-rag_retrieval.py — with SymSpell spell correction
-
-Adds automatic typo correction using SymSpell:
-- Learns from your KB questions and tags
-- Corrects queries like "humidte" → "humidity"
-- Replaces hardcoded COMMON_REPLACEMENTS
-
-Dependencies:
-  pip install symspellpy sentence-transformers scikit-learn rapidfuzz numpy pandas
-"""
-
 import os
 import json
 import pandas as pd
@@ -19,14 +7,14 @@ from sklearn.preprocessing import normalize as sk_normalize
 from rapidfuzz import process, fuzz
 from symspellpy import SymSpell, Verbosity
 
-# Config
+
 KB_PATH = "data/domain.csv"
 EMB_CACHE = "data/kb_embeddings.npy"
 MODEL_NAME = "all-MiniLM-L6-v2"
 
-# -------------------------
+
 # Spell checker setup
-# -------------------------
+
 sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
 
 def build_spell_dictionary(df: pd.DataFrame):
@@ -49,9 +37,9 @@ def correct_text(text: str) -> str:
         corrected.append(suggestions[0].term if suggestions else w)
     return " ".join(corrected).strip()
 
-# -------------------------
+
 # KB loading and embedding
-# -------------------------
+
 def load_knowledge_base(path: str = KB_PATH) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Knowledge base not found at: {path}")
@@ -81,9 +69,8 @@ def get_model_and_embeddings(df: pd.DataFrame, model_name: str = MODEL_NAME, cac
     kb_embeddings = sk_normalize(kb_embeddings, axis=1)
     return model, kb_embeddings
 
-# -------------------------
-# Retrieval
-# -------------------------
+#Retrival
+
 def fuzzy_fallback(query_norm: str, choices: list, score_cutoff: int = 70):
     if not query_norm or not choices:
         return None
@@ -154,19 +141,3 @@ def print_results(results):
             print(f"Tags: {r['tags']}")
         print("-" * 60)
 
-# -------------------------
-# CLI test
-# -------------------------
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="RAG retrieval test with SymSpell")
-    parser.add_argument("--query", type=str, default="how to manage humidte in tea", help="Query text")
-    parser.add_argument("--k", type=int, default=3, help="Top-k results")
-    parser.add_argument("--kb", type=str, default=KB_PATH, help="Path to KB CSV")
-    args = parser.parse_args()
-
-    try:
-        docs = retrieve_docs(args.query, k=args.k, path=args.kb)
-        print_results(docs)
-    except Exception as e:
-        print("Error during retrieval:", repr(e))
