@@ -390,13 +390,19 @@ def save_registry(registry):
         json.dump(registry, f, indent=2)
 
 
+WEATHER_COLUMNS = [
+    'temperature_2m_mean', 'rain_sum', 'wind_speed_10m_mean', 'et0_fao_evapotranspiration'
+]
 def validate_csv(df):
     errors = []
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         errors.append(f"Missing required columns: {', '.join(missing)}")
-    if 'YPH' in df.columns and df['YPH'].isna().all():
-        errors.append("YPH column is entirely empty.")
+    if 'YPH' in df.columns and df['YPH'].isna().any():
+        errors.append(f"YPH column has {df['YPH'].isna().sum()} missing value(s). All rows must have a YPH value.")
+    for col in WEATHER_COLUMNS:
+        if col in df.columns and df[col].isna().any():
+            errors.append(f"Weather column '{col}' has {df[col].isna().sum()} missing value(s). All weather values must be present.")
     if 'Year' in df.columns and df['Year'].nunique() < 4:
         errors.append(f"Only {df['Year'].nunique()} unique year(s) found. Minimum 4 required.")
     return errors
