@@ -1,7 +1,10 @@
 import streamlit as st
 import base64
 from pathlib import Path
-from utils.tea_yield_model import load_model, create_input_df, generate_pdf_report, generate_ai_explanation, find_dolomite_moisture
+from utils.tea_yield_model import (load_model, create_input_df, generate_pdf_report,
+                                    generate_ai_explanation, find_dolomite_moisture,
+                                    get_valid_year_range, get_sweet_spot_year,
+                                    get_active_model_metadata)
 
 # --- Navigation Helper ---
 if st.session_state.get("navigate_to_chat", False):
@@ -19,44 +22,17 @@ with open(logo_path, "rb") as img_file:
 st.set_page_config(page_title="Tea Yield Prediction System",
                    page_icon=str(favicon_path), layout="wide")
 
-# Page Config
-BASE_DIR = Path(__file__).resolve().parent.parent
-favicon_path = BASE_DIR / "assets" / "favicon_zoom.ico"
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-logo_path = BASE_DIR / "assets" / "logo_white_cropped.png"
-
-# Convert logo to base64
-with open(logo_path, "rb") as img_file:
-    logo_base64 = base64.b64encode(img_file.read()).decode()
-
-# --- Page Configuration ---
-st.set_page_config(page_title="Tea Yield Prediction System",page_icon=str(favicon_path), layout="wide")
-
-# --- Custom CSS for Borders, Colors, and White Background ---
+# --- Custom CSS ---
 st.markdown("""
 <style>
-/* Full page white background */
-.stApp { 
-background-color: white; 
-}
+.stApp { background-color: white; }
 
-header[data-testid="stHeader"] {
-    display: none;
-}
+header[data-testid="stHeader"] { display: none; }
 
-/* Main title color */
-h1 { 
-color: #1B4332 !important; 
-}
+h1 { color: #1B4332 !important; }
 
-/* Feature labels in black */
-label { 
-color: black !important; 
-font-weight: 500; 
-}
+label { color: black !important; font-weight: 500; }
 
-/* Number input styling */
 input[type="number"] {
     background-color: white !important;
     color: black !important;
@@ -66,12 +42,8 @@ input[type="number"] {
     box-shadow: none !important;
 }
 
-div[data-baseweb="input"] { 
-    padding: 0 !important; 
-    margin: 0 !important; 
-}
+div[data-baseweb="input"] { padding: 0 !important; margin: 0 !important; }
 
-/* Headings */
 .section-heading {
     color: #1B4332;
     font-weight: bold;
@@ -79,13 +51,8 @@ div[data-baseweb="input"] {
     margin-bottom: 5px;
 }
 
-/* Columns spacing */
-.section-content { 
-    padding-left: 0px; 
-    margin-bottom: 15px; 
-}
+.section-content { padding-left: 0px; margin-bottom: 15px; }
 
-/* Selectbox styling */
 .stSelectbox div[data-baseweb="select"] {
     background-color: white !important;
     color: black !important;
@@ -96,47 +63,43 @@ div[data-baseweb="input"] {
 .stSelectbox div[data-baseweb="select"] > div { background-color: white !important; color: black !important; }
 .stSelectbox svg { fill: #1B4332 !important; opacity: 1 !important; }
 .stSelectbox div[data-baseweb="select"]:hover { border: 1px solid #1B4332 !important; }
-    
+
 .header {
-    position: sticky;          
-    top: 0;                   
-    z-index: 999;              
-    background-color: #1B4332; 
-    padding: 10px 10px;        
-    color: white;              
-    display: flex;             
-    justify-content: space-between; 
-    align-items: center;      
-    height: 70px;             
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background-color: #1B4332;
+    padding: 10px 10px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
 }
-    
+
 .logo {
-    display: block;       
-    height: 100%;         
-    width: auto;          
-    object-fit: contain; 
+    display: block;
+    height: 100%;
+    width: auto;
+    object-fit: contain;
     margin: 0;
     padding: 0;
 }
 
 .header a {
-    color: white;          
+    color: white;
     text-decoration: none;
-    margin-left: 20px;     
-    font-weight: bold;     
+    margin-left: 20px;
+    font-weight: bold;
 }
 
-.header a:hover {
-    color: #D8F3DC;     
-}
+.header a:hover { color: #D8F3DC; }
 
-/* Ensure the header stays full width (keep your existing block-container code) */
 .block-container {
     padding: 0rem !important;
     max-width: 100% !important;
 }
 
-/* Make all buttons same height & full width */
 div.stButton > button,
 div.stDownloadButton > button {
     background-color: #1B4332;
@@ -148,7 +111,6 @@ div.stDownloadButton > button {
     font-weight: bold;
 }
 
-/* Hover effect */
 div.stButton > button:hover,
 div.stDownloadButton > button:hover {
     background-color: #2D6A4F !important;
@@ -156,55 +118,70 @@ div.stDownloadButton > button:hover {
     border: none;
 }
 
-/* Active effect */
 div.stButton > button:active,
 div.stDownloadButton > button:active {
     background-color: #76c776;
     color: #000000;
 }
 
-/* Footer */
+.warning-banner {
+    background: #FFF3CD;
+    border: 1px solid #FFC107;
+    border-left: 5px solid #FFC107;
+    border-radius: 6px;
+    padding: 12px 16px;
+    color: #856404;
+    margin: 10px 0 16px 0;
+    font-size: 0.97rem;
+}
+
+.model-info-banner {
+    background: #D4EDDA;
+    border: 1px solid #28A745;
+    border-left: 5px solid #1B4332;
+    border-radius: 6px;
+    padding: 10px 16px;
+    color: #155724;
+    margin: 8px 0 14px 0;
+    font-size: 0.93rem;
+}
+
 .footer {
     background-color: #1B4332;
     color: white;
     padding: 20px;
 }
-    
-.footer p, .footer a {
-    color: white;
-}
-    
+
+.footer p, .footer a { color: white; }
+
 .footer-link {
-    text-decoration: none !important; 
+    text-decoration: none !important;
     cursor: pointer;
 }
-    
+
 .footer-link:hover {
     color: Grey;
-    text-decoration: none !important; 
+    text-decoration: none !important;
 }
 
-/* Layout helpers */
 .flex-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-left: auto;
 }
-    
+
 .flex-around {
     display: flex;
     justify-content: space-around;
     align-items: center;
 }
-    
-.center-text {
-    text-align: center;
-}  
+
+.center-text { text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-# Header Section
+# Header
 st.markdown(f"""
 <div class="header">
     <img src="data:image/png;base64,{logo_base64}" class="logo">
@@ -223,14 +200,49 @@ col1, col_left_gap, col_main, col_right_gap, col5 = st.columns([0.25, 0.25, 7, 0
 with col_main:
     st.title("Tea Yield Prediction System")
 
-    # Year & Month
+    # ── Model Info Banner ──
+    meta = get_active_model_metadata()
+    sweet_spot = get_sweet_spot_year()
+    year_start, year_end = get_valid_year_range()
+
+    if meta:
+        train_yrs_str = ", ".join(str(y) for y in meta.get("training_years", []))
+        st.markdown(f"""
+        <div class="model-info-banner">
+            🤖 <b>Active Model:</b> {meta['filename']} &nbsp;|&nbsp;
+            <b>Trained on:</b> {train_yrs_str} &nbsp;|&nbsp;
+            <b>Optimal prediction year:</b> {sweet_spot}
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── Year & Month ──
     col_y, col_m, _ = st.columns([1, 1, 3])
     with col_y:
-        year = st.selectbox("Year", list(range(2026, 2031)))
+        year_options = list(range(year_start, year_end + 1))
+        year = st.selectbox("Year", year_options)
     with col_m:
         month = st.selectbox("Month", list(range(1, 13)))
 
-    # Weather Inputs
+    # ── Year Accuracy Warning ──
+    if sweet_spot and year != sweet_spot:
+        if year < sweet_spot:
+            st.markdown(f"""
+            <div class="warning-banner">
+                ⚠️ <b>Low Accuracy Warning:</b> The selected year <b>{year}</b> falls within the model's training period.
+                Predictions for years already seen by the model may be unreliable.
+                The current model is optimised for <b>{sweet_spot}</b>.
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="warning-banner">
+                ⚠️ <b>Reduced Accuracy Warning:</b> The selected year <b>{year}</b> is beyond the model's optimal prediction year (<b>{sweet_spot}</b>).
+                Accuracy may decrease for years further from the training window.
+                Consider retraining the model with more recent data via the Admin Panel.
+            </div>
+            """, unsafe_allow_html=True)
+
+    # ── Weather Inputs ──
     st.markdown('<div class="section-heading">Weather Data</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-content">', unsafe_allow_html=True)
     w_col1, w_col2 = st.columns(2)
@@ -242,7 +254,7 @@ with col_main:
         et0_fao_evapotranspiration = st.number_input("Evapotranspiration (Mean, mm/day)", 0.0, 10.0, 5.0, 0.1)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Fertilizer Inputs
+    # ── Fertilizer Inputs ──
     st.markdown('<div class="section-heading">Fertilizer Data</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-content">', unsafe_allow_html=True)
     f_col1, f_col2 = st.columns(2)
@@ -256,24 +268,24 @@ with col_main:
         Urea = st.number_input("Urea (kg)", 0.0, 500.0, 0.0, 1.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Lag Inputs
+    # ── Lag Inputs ──
     st.markdown('<div class="section-heading">Lag Data</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-content">', unsafe_allow_html=True)
     l_col1, l_col2 = st.columns(2)
     with l_col1:
         Compost_lag1 = st.number_input("Last Month Compost (kg)", 0.0, 500.0, 0.0, 1.0)
     with l_col2:
-        YPH_lag12 = st.number_input("Last Year YPH", 0.0, 500.0, 0.0, 1.0)
         YPH_lag1 = st.number_input("Last Month YPH", 0.0, 500.0, 0.0, 1.0)
+        YPH_lag12 = st.number_input("Last Year Same Month YPH", 0.0, 500.0, 0.0, 1.0)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Load model
     pipeline = load_model()
     if pipeline is None:
-        st.error("Model not found. Please check your path.")
+        st.error("Model not found. Please check your path or contact the admin.")
 
     if st.button("Predict Yield") and pipeline:
-        Dolomite_moisture = find_dolomite_moisture(Dolomite, rain_sum, et0_fao_evapotranspiration )
+        Dolomite_moisture = find_dolomite_moisture(Dolomite, rain_sum, et0_fao_evapotranspiration)
         input_df = create_input_df(T200, U709, Epson, Dolomite, Urea, BioShield,
                                    temperature_2m_mean, rain_sum, wind_speed_10m_mean, et0_fao_evapotranspiration,
                                    Dolomite_moisture, YPH_lag1, YPH_lag12, Compost_lag1)
@@ -286,26 +298,19 @@ with col_main:
             'Dolomite_moisture': Dolomite_moisture
         })
 
-    # Display results if available
+    # Display results
     if 'predicted_yph' in st.session_state:
         predicted_yph = st.session_state['predicted_yph']
         explanation_text = st.session_state['explanation_text']
         Dolomite_moisture = st.session_state['Dolomite_moisture']
 
         st.session_state['last_yield_input'] = {
-            "T200": T200,
-            "U709": U709,
-            "Epson": Epson,
-            "Dolomite": Dolomite,
-            "Urea": Urea,
-            "BioShield": BioShield,
-            "temperature_2m_mean": temperature_2m_mean,
-            "rain_sum": rain_sum,
+            "T200": T200, "U709": U709, "Epson": Epson, "Dolomite": Dolomite,
+            "Urea": Urea, "BioShield": BioShield,
+            "temperature_2m_mean": temperature_2m_mean, "rain_sum": rain_sum,
             "wind_speed_10m_mean": wind_speed_10m_mean,
             "et0_fao_evapotranspiration": et0_fao_evapotranspiration,
-            "Compost_lag1": Compost_lag1,
-            "YPH_lag1": YPH_lag1,
-            "YPH_lag12": YPH_lag12,
+            "Compost_lag1": Compost_lag1, "YPH_lag1": YPH_lag1, "YPH_lag12": YPH_lag12,
             "predicted_yph": st.session_state['predicted_yph']
         }
 
@@ -327,7 +332,6 @@ with col_main:
             predicted_yph, explanation_text, year, month
         )
 
-        # Create two columns for buttons
         btn_col1, btn_col2, _ = st.columns([1, 1.2, 5])
 
         with btn_col1:
@@ -341,13 +345,11 @@ with col_main:
 
         with btn_col2:
             if st.button("Follow to Chatbot"):
-                # Store the message for chatbot
                 st.session_state['chat_init_message'] = (
                     f"The predicted yield is {st.session_state['predicted_yph']:.2f} kg/ha. "
-                    f"Here’s the explanation: {st.session_state['explanation_text']}. "
+                    f"Here's the explanation: {st.session_state['explanation_text']}. "
                     "Please give further recommendations or insights."
                 )
-                # Redirect to chatbot page
                 st.switch_page("pages/04_chatbot.py")
 
 # Footer
@@ -358,23 +360,23 @@ st.markdown("""
         <div>
             <b><p style="font-size:25px">GPTea</b></p>
            <p style="font-size:18px; max-width: 300px; line-height: 1.4;">
-                AI platform for Sri Lankan tea industrials to predict tea yield, 
+                AI platform for Sri Lankan tea industrials to predict tea yield,
                 detect diseases in leaves and clarify doubts with Chatbot.
            </p>
         </div>
         <div>
             <b><p style="font-size:20px">Quick Links</b><br></p>
             <p>
-                <a href="#" class="footer-link">Home</a> | 
-                <a href="#" class="footer-link">Innovation</a> | 
+                <a href="#" class="footer-link">Home</a> |
+                <a href="#" class="footer-link">Innovation</a> |
                 <a href="#" class="footer-link">Research Team</a>
             </p>
         </div>
         <div>
             <b><p>Resources</b><br></p>
             <p>
-                <a href="#" class="footer-link">Documentation</a> | 
-                <a href="#" class="footer-link">Research Paper</a> | 
+                <a href="#" class="footer-link">Documentation</a> |
+                <a href="#" class="footer-link">Research Paper</a> |
                 <a href="#" class="footer-link">Dataset</a>
             </p>
         </div>

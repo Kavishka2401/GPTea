@@ -1,0 +1,14 @@
+{
+  "active_model": "Final_Ridge_Model_23_24_25.pkl",
+  "models": [
+    {
+      "filename": "Final_Ridge_Model_23_24_25.pkl",
+      "training_years": [
+        2023,
+        2024,
+        2025
+      ],
+      "registered_at": "2026-01-01 00:00:00"
+    }
+  ]
+}

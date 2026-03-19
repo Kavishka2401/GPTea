@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 import joblib
 from pathlib import Path
@@ -14,24 +15,96 @@ class PDF(FPDF):
         self.logo_path = logo_path
 
     def header(self):
-        # Watermark on every page
         if self.logo_path.exists() and hasattr(self, 'local_context'):
             with self.local_context(fill_opacity=0.3):
                 self.image(str(self.logo_path), x=45, y=80, w=120)
         elif self.logo_path.exists():
             self.image(str(self.logo_path), x=45, y=80, w=120)
 
-        # Header logo only on first page
         if self.page_no() == 1 and self.logo_path.exists():
             self.image(str(self.logo_path), x=10, y=8, w=50)
 
+# Register Helper methods
+def get_models_dir():
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    return BASE_DIR / "models"
 
-def load_model(model_path="models/Final_Ridge_Model_23_24_25.pkl"):
-    if os.path.exists(model_path):
-        return joblib.load(model_path)
+def get_registry():
+    """Load the model registry JSON. Returns dict with active_model and models list."""
+    registry_path = get_models_dir() / "model_registry.json"
+    if registry_path.exists():
+        with open(registry_path, "r") as f:
+            return json.load(f)
+    return {"active_model": None, "models": []}
+
+def get_active_model_metadata():
+    """
+    Returns metadata dict for the currently active model.
+    Keys: filename, training_years, registered_at
+    Returns None if no active model set.
+    """
+    registry = get_registry()
+    active_filename = registry.get("active_model")
+    if not active_filename:
+        return None
+    return next((m for m in registry["models"] if m["filename"] == active_filename), None)
+
+
+def get_sweet_spot_year():
+    """
+    Returns the optimal prediction year for the current active model.
+    e.g. if trained on [2023, 2024, 2025] → returns 2026
+    Returns None if no active model.
+    """
+    meta = get_active_model_metadata()
+    if meta and meta.get("training_years"):
+        return max(meta["training_years"]) + 1
     return None
 
+def get_valid_year_range():
+    """
+    Returns (sweet_spot_year, max_allowed_year) for the year dropdown.
+    sweet_spot_year = max(training_years) + 1  → most accurate
+    Years before sweet_spot should be hidden (already trained on them).
+    Years after sweet_spot are allowed but with a warning.
+    Returns (None, None) if no active model.
+    """
+    meta = get_active_model_metadata()
+    if meta and meta.get("training_years"):
+        sweet_spot = max(meta["training_years"]) + 1
+        return sweet_spot, sweet_spot + 4  # show 5 years starting from sweet spot
+    # Fallback: no registry yet (original model)
+    return 2026, 2030
 
+# MODEL LOADING
+def load_model(model_path=None):
+    """
+    Load the active model from the registry.
+    Falls back to the original hardcoded model if no registry exists.
+    """
+    models_dir = get_models_dir()
+
+    # Try registry first
+    registry = get_registry()
+    active_filename = registry.get("active_model")
+
+    if active_filename:
+        active_path = models_dir / active_filename
+        if active_path.exists():
+            return joblib.load(active_path)
+
+    # Fallback: original model
+    fallback_path = models_dir / "Final_Ridge_Model_23_24_25.pkl"
+    if fallback_path.exists():
+        return joblib.load(fallback_path)
+
+    # Last resort: use provided path
+    if model_path and os.path.exists(model_path):
+        return joblib.load(model_path)
+
+    return None
+
+# Input Helper methods
 def create_input_df(T200, U709, Epson, Dolomite, Urea, BioShield,
                     temperature_2m_mean, rain_sum, wind_speed_10m_mean, et0_fao_evapotranspiration,
                     Dolomite_moisture, YPH_lag1, YPH_lag12, Compost_lag1):
@@ -39,9 +112,15 @@ def create_input_df(T200, U709, Epson, Dolomite, Urea, BioShield,
                           temperature_2m_mean, rain_sum, wind_speed_10m_mean, et0_fao_evapotranspiration,
                           Dolomite_moisture, YPH_lag1, YPH_lag12, Compost_lag1]],
                         columns=['T200', 'U709', 'Epson Salt', 'Dolomite', 'Urea', 'BioShield',
-                                 'temperature_2m_mean', 'rain_sum', 'wind_speed_10m_mean', 'et0_fao_evapotranspiration',
-                                 'Dolomite_moisture', 'YPH_lag1', 'YPH_lag12', 'Compost_lag1'])
+                                 'temperature_2m_mean', 'rain_sum', 'wind_speed_10m_mean',
+                                 'et0_fao_evapotranspiration', 'Dolomite_moisture',
+                                 'YPH_lag1', 'YPH_lag12', 'Compost_lag1'])
 
+
+def find_dolomite_moisture(dolomite, rain_sum, et0_fao_evapotranspiration):
+    return dolomite * (rain_sum - et0_fao_evapotranspiration)
+
+# PDF REPORT
 
 def generate_pdf_report(T200, U709, Epson, Dolomite, Urea, BioShield,
                         temperature_2m_mean, rain_sum, wind_speed_10m_mean, et0_fao_evapotranspiration,
@@ -55,7 +134,6 @@ def generate_pdf_report(T200, U709, Epson, Dolomite, Urea, BioShield,
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # Date and Time
     pdf.set_font("Arial", size=10)
     current_date = datetime.now().strftime("%d/%m/%Y")
     current_time = datetime.now().strftime("%H:%M:%S")
@@ -78,7 +156,15 @@ def generate_pdf_report(T200, U709, Epson, Dolomite, Urea, BioShield,
     pdf.cell(95, 8, f"Month - {month if month else 'N/A'}", ln=1)
     pdf.ln(5)
 
-    # WEATHER DATA
+    # Model info
+    meta = get_active_model_metadata()
+    if meta:
+        train_yrs = ', '.join(str(y) for y in meta.get("training_years", []))
+        pdf.set_font("Arial", size=10)
+        pdf.cell(0, 8, f"Model Trained On: {train_yrs}", ln=1)
+        pdf.ln(3)
+
+    # WEATHER
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, "Weather Data", ln=1)
     pdf.set_font("Arial", size=10)
@@ -88,7 +174,7 @@ def generate_pdf_report(T200, U709, Epson, Dolomite, Urea, BioShield,
     pdf.cell(95, 8, f"Evapotranspiration: {et0_fao_evapotranspiration} mm/day", ln=1)
     pdf.ln(5)
 
-    # FERTILIZER DATA
+    # FERTILIZER
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, "Fertilizer Data", ln=1)
     pdf.set_font("Arial", size=10)
@@ -100,12 +186,12 @@ def generate_pdf_report(T200, U709, Epson, Dolomite, Urea, BioShield,
     pdf.cell(95, 8, f"Urea: {Urea} kg", ln=1)
     pdf.ln(5)
 
-    # LAG DATA
+    # LAG
     pdf.set_font("Arial", 'B', 11)
     pdf.cell(0, 8, "Historical (Lag) Data", ln=1)
     pdf.set_font("Arial", size=10)
     pdf.cell(95, 8, f"Last Month Compost: {Compost_lag1} kg", ln=0)
-    pdf.cell(95, 8, f"Last Year YPH: {YPH_lag12}", ln=1)
+    pdf.cell(95, 8, f"Last Year Same Month YPH: {YPH_lag12}", ln=1)
     pdf.cell(95, 8, f"Last Month YPH: {YPH_lag1}", ln=1)
     pdf.ln(5)
 
@@ -125,7 +211,7 @@ def generate_pdf_report(T200, U709, Epson, Dolomite, Urea, BioShield,
     filename = f"Tea_Yield_Report_{month}_{year}.pdf" if month and year else "Tea_Yield_Report.pdf"
     return pdf_buffer, filename
 
-
+# AI EXPLANATION
 def generate_ai_explanation(pipeline, input_df):
     try:
         imputer = pipeline.named_steps['imputer']
@@ -222,7 +308,6 @@ def generate_ai_explanation(pipeline, input_df):
             {feature_summary}
             """
 
-
         client = Groq(api_key="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")
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -234,8 +319,3 @@ def generate_ai_explanation(pipeline, input_df):
         explanation_text = f"AI explanation unavailable: {str(e)}"
 
     return explanation_text
-
-def find_dolomite_moisture(dolomite,rain_sum,et0_fao_evapotranspiration):
-    dolomite_moisture = dolomite * (rain_sum - et0_fao_evapotranspiration)
-    return dolomite_moisture
-

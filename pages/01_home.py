@@ -473,7 +473,10 @@ st.markdown("""
                 <a href="#" class="footer-link">Research Paper</a> | 
                 <a href="#" class="footer-link">Dataset</a>
             </p>
-        </div>
+            <p>
+            <a href="/admin" target="_self" class="footer-link">Admin Login</a>
+            </p>
+            </div>
     </div>
     <br>
     <p class="center-text">© 2026 GPTea Research Project. All rights reserved.</p>
