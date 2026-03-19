@@ -5,6 +5,7 @@ from utils.tea_yield_model import (load_model, create_input_df, generate_pdf_rep
                                     generate_ai_explanation, find_dolomite_moisture,
                                     get_valid_year_range, get_sweet_spot_year,
                                     get_active_model_metadata)
+from pages.feedback_utils import render_feedback_widget
 
 # --- Navigation Helper ---
 if st.session_state.get("navigate_to_chat", False):
@@ -194,6 +195,12 @@ st.markdown(f"""
     </div>
 </div>
 """, unsafe_allow_html=True)
+
+#FEEDBACK
+render_feedback_widget(
+    page_id   = "yield_prediction",
+    icon_path = str(BASE_DIR / "assets" / "favicon_zoom.png"),
+)
 
 # --- Main UI ---
 col1, col_left_gap, col_main, col_right_gap, col5 = st.columns([0.25, 0.25, 7, 0.25, 0.25])

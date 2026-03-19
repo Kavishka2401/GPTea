@@ -5,12 +5,20 @@ from pathlib import Path
 
 import numpy as np
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image
 
 import tensorflow as tf
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
 
 import matplotlib.pyplot as plt
+
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from pages.feedback_utils import render_feedback_widget
+
 
 # Page Config
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,24 +31,25 @@ logo_path = BASE_DIR / "assets" / "logo_white_cropped.png"
 with open(logo_path, "rb") as img_file:
     logo_base64 = base64.b64encode(img_file.read()).decode()
 
-# -------------------- CONFIG --------------------
-st.set_page_config(page_title="GPTea - Disease Detection",page_icon=str(favicon_path), layout="wide")
+# CONFIG
+st.set_page_config(page_title="GPTea - Disease Detection", page_icon=str(favicon_path), layout="wide")
 
 MODEL_PATH = "Models/MobileNetV2_TeaDisease_Final.keras"
 CLASSES_PATH = "Models/class_names.json"
+VALIDATOR_PATH = "Models/leaf_validator_best.keras"
 
 DISEASE_EXPLANATIONS = {
     "Anthracnose": "Anthracnose typically appears as dark/irregular lesions that may enlarge and merge, causing necrotic patches on leaves.",
     "AlgalLeaf": "Algal leaf spot often shows raised, circular, velvety patches (greenish/orange). Common in humid conditions and older leaves.",
     "RedLeafSpot": "Red leaf spot presents as reddish-brown circular spots that can expand, merge, and reduce photosynthetic leaf area.",
     "WhiteSpot": "White spot appears as pale/whitish lesions, sometimes with darker margins. Lesions can spread and weaken the leaf.",
-    "BirdEyeSpot": "Bird’s eye spot shows small round lesions with a pale center and darker ring, resembling an eye-like pattern.",
+    "BirdEyeSpot": "Bird's eye spot shows small round lesions with a pale center and darker ring, resembling an eye-like pattern.",
     "BrownBlight": "Brown blight causes brown necrotic areas often starting at tips/margins and spreading inward in severe cases.",
     "GrayBlight": "Gray blight produces grayish lesions with darker borders; affected areas may look scorched or dried.",
     "Healthy": "Healthy leaves show uniform green color without visible lesions, spots, rust, or abnormal discoloration."
 }
 
-# -------------------- STYLE: header space + footer space --------------------
+# STYLE
 st.markdown("""
 <style>
 :root{
@@ -69,7 +78,7 @@ header[data-testid="stHeader"] {
     align-items: center;      
     height: 70px;             
 }
-    
+
 .logo {
     display: block;       
     height: 100%;         
@@ -159,7 +168,7 @@ div[data-testid="stFileUploader"] button {
     border-radius: 8px !important;
     font-weight: 600 !important;
 }
-    
+
 /* 4. Hover effect for the button so it feels interactive */
 div[data-testid="stFileUploader"] button:hover {
     background-color: #eeeeee !important;
@@ -217,6 +226,26 @@ div[data-testid="stTextInputRootElement"] {
     display: none !important; 
 }
 
+/* Make download button match the green pill buttons */
+div.stDownloadButton > button {
+    border-radius: 999px !important;
+    background: var(--light) !important;
+    color: #0f2f22 !important;
+    border: 1px solid rgba(31,90,63,.25) !important;
+    font-weight: 1000 !important;
+    font-size: 18px !important;
+    padding: 1rem 2rem !important;
+    width: 100% !important;
+}
+div.stDownloadButton > button:hover {
+    background: var(--light-hover) !important;
+    border-color: rgba(31,90,63,.40) !important;
+    color: #0b2219 !important;
+}
+div.stDownloadButton > button:active {
+    transform: scale(0.99);
+}
+
 /* Targets standard st.write text, bold text, and headers */
 [data-testid="stMarkdownContainer"] p, 
 [data-testid="stMarkdownContainer"] h3, 
@@ -232,52 +261,47 @@ div[data-testid="stTextInputRootElement"] {
 /* Targets the inline code block (the layer name inside backticks) */
 code {
     color: black !important;
-    background-color: #e0e0e0 !important; /* light grey background for visibility */
+    background-color: #e0e0e0 !important;
 }
 
 /* Targets st.error messages text */
 div[data-testid="stNotificationContent"] {
     color: black !important;
 }
-    
-/* Footer */
+
 .footer {
     background-color: #1B4332;
     color: white;
     padding: 20px;
 }
-    
-.footer p, .footer a {
-    color: white;
-}
-    
+
+.footer p, .footer a { color: white; }
+
 .footer-link {
-    text-decoration: none !important; 
+    text-decoration: none !important;
     cursor: pointer;
 }
-    
+
 .footer-link:hover {
     color: Grey;
-    text-decoration: none !important; 
+    text-decoration: none !important;
 }
 
-/* Layout helpers */
 .flex-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-left: auto;
 }
-    
+
 .flex-around {
     display: flex;
     justify-content: space-around;
     align-items: center;
 }
-    
-.center-text {
-    text-align: center;
-}  
+
+.center-text { text-align: center; }  
+
 /* Ensure the footer container and all children are white */
 .footer, .footer p, .footer b, .footer span {
     color: #ffffff !important;
@@ -298,10 +322,9 @@ div[data-testid="stNotificationContent"] {
 }
 </style>
 """,
-    unsafe_allow_html=True,
-)
+unsafe_allow_html=True,)
 
-# Header Section
+#HEADER
 st.markdown(f"""
 <div class="header">
     <img src="data:image/png;base64,{logo_base64}" class="logo">
@@ -315,7 +338,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# -------------------- MODEL LOAD --------------------
+# FEEDBACK
+render_feedback_widget(
+    page_id   = "disease_detection",
+    icon_path = str(BASE_DIR / "assets" / "favicon_zoom.png"),
+)
+
+# MODEL LOAD
 @st.cache_resource
 def load_model_and_classes():
     model = tf.keras.models.load_model(MODEL_PATH)
@@ -324,25 +353,25 @@ def load_model_and_classes():
     return model, class_names
 
 
-# -------------------- GRAD-CAM HELPERS --------------------
+@st.cache_resource
+def load_validator_model():
+    return tf.keras.models.load_model(VALIDATOR_PATH)
+
+
+# GRAD-CAM HELPERS
 def find_last_conv_layer_name(model: tf.keras.Model) -> str:
-    # Try to automatically find the last Conv2D layer in top-level model
     for layer in reversed(model.layers):
         if isinstance(layer, tf.keras.layers.Conv2D):
             return layer.name
-
-    # If nested model (common in transfer learning), dig into sub-models
     for layer in reversed(model.layers):
         if hasattr(layer, "layers"):
             for sub in reversed(layer.layers):
                 if isinstance(sub, tf.keras.layers.Conv2D):
                     return sub.name
-
     raise ValueError("Could not find a Conv2D layer for Grad-CAM. Set it manually.")
 
 
 def make_gradcam_heatmap(img_batch: np.ndarray, model: tf.keras.Model, last_conv_layer_name: str, pred_index: int):
-    # Use FIRST output if model has multiple outputs
     model_output = model.outputs[0] if isinstance(model.output, (list, tuple)) else model.output
 
     grad_model = tf.keras.models.Model(
@@ -352,11 +381,8 @@ def make_gradcam_heatmap(img_batch: np.ndarray, model: tf.keras.Model, last_conv
 
     with tf.GradientTape() as tape:
         conv_outputs, preds = grad_model(img_batch)
-
-        # preds could still be list/tuple in some cases
         if isinstance(preds, (list, tuple)):
             preds = preds[0]
-
         class_channel = preds[:, pred_index]
 
     grads = tape.gradient(class_channel, conv_outputs)
@@ -374,15 +400,13 @@ def overlay_heatmap_on_image(pil_img: Image.Image, heatmap: np.ndarray, alpha: f
     base = pil_img.convert("RGB")
     base_arr = np.array(base)
 
-    # Resize heatmap to base image size
     heat = tf.image.resize(heatmap[..., np.newaxis], (base_arr.shape[0], base_arr.shape[1])).numpy().squeeze()
     heat = np.clip(heat, 0, 1)
 
-    # Create overlay figure and return as PIL
     fig = plt.figure(figsize=(6, 6), dpi=150)
     plt.axis("off")
     plt.imshow(base_arr)
-    plt.imshow(heat, alpha=alpha)  # default colormap
+    plt.imshow(heat, alpha=alpha)
     buf = io.BytesIO()
     plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
     plt.close(fig)
@@ -390,7 +414,7 @@ def overlay_heatmap_on_image(pil_img: Image.Image, heatmap: np.ndarray, alpha: f
     return Image.open(buf)
 
 
-# -------------------- PREDICT + XAI (Streamlit-friendly version of your Colab) --------------------
+# PREDICT + XAI
 def predict_and_explain_xai_pil(
         pil_img: Image.Image,
         model: tf.keras.Model,
@@ -399,13 +423,11 @@ def predict_and_explain_xai_pil(
         threshold: float = 0.60,
         img_size=(224, 224),
 ):
-    # 1) Preprocess (same logic as your Colab, but from PIL instead of file path)
     img = pil_img.convert("RGB").resize(img_size)
     img_array = np.array(img).astype(np.float32)
     img_batch = np.expand_dims(img_array, axis=0)
     img_batch = preprocess_input(img_batch)
 
-    # 2) Predict
     raw = model.predict(img_batch, verbose=0)
     if isinstance(raw, (list, tuple)):
         raw = raw[0]
@@ -414,10 +436,8 @@ def predict_and_explain_xai_pil(
     pred_class = class_names[pred_idx]
     conf = float(pred[pred_idx])
 
-    # 3) Explanation text (your dictionary)
     explanation = DISEASE_INFO.get(pred_class, "No description available.")
 
-    # 4) Grad-CAM heatmap + overlay
     last_conv_layer_name = find_last_conv_layer_name(model)
     heatmap = make_gradcam_heatmap(img_batch, model, last_conv_layer_name, pred_idx)
     overlay_img = overlay_heatmap_on_image(img, heatmap, alpha=0.40)
@@ -426,7 +446,6 @@ def predict_and_explain_xai_pil(
     if conf < threshold:
         low_conf_msg = "Low confidence → image may be unclear / different lighting / not in trained classes."
 
-    # Top-3
     top3_idx = np.argsort(pred)[::-1][:3]
     top3 = [(class_names[int(i)], float(pred[int(i)])) for i in top3_idx]
 
@@ -441,13 +460,70 @@ def predict_and_explain_xai_pil(
         "top3": top3,
     }
 
-# -------------------- SESSION STATE --------------------
+
+# PDF REPORT
+def pil_to_bytes(pil_img, fmt="PNG"):
+    buf = io.BytesIO()
+    pil_img.save(buf, format=fmt)
+    buf.seek(0)
+    return buf
+
+
+def create_pdf_report(pil_img, result):
+    pdf_buffer = io.BytesIO()
+    doc = SimpleDocTemplate(pdf_buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+
+    title_style = styles["Title"]
+    heading_style = styles["Heading2"]
+    normal_style = styles["BodyText"]
+
+    story.append(Paragraph("GPTea - Tea Leaf Disease Detection Report", title_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(f"<b>Generated On:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", normal_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(f"<b>Predicted Disease:</b> {result['pred_class']}", normal_style))
+    story.append(Paragraph(f"<b>Confidence:</b> {result['confidence']:.2%}", normal_style))
+    story.append(Paragraph(f"<b>Explanation:</b> {result['explanation']}", normal_style))
+
+    if result["low_conf_msg"]:
+        story.append(Paragraph(f"<b>Warning:</b> {result['low_conf_msg']}", normal_style))
+
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Top 3 Predictions", heading_style))
+    for name_i, prob_i in result["top3"]:
+        story.append(Paragraph(f"- {name_i}: {prob_i:.2%}", normal_style))
+
+    story.append(Spacer(1, 16))
+    story.append(Paragraph("Uploaded Image", heading_style))
+    img_bytes = pil_to_bytes(pil_img)
+    rl_img = RLImage(img_bytes, width=3 * inch, height=3 * inch)
+    story.append(rl_img)
+
+    story.append(Spacer(1, 16))
+    story.append(Paragraph("Grad-CAM Overlay", heading_style))
+    overlay_bytes = pil_to_bytes(result["overlay"])
+    rl_overlay = RLImage(overlay_bytes, width=3 * inch, height=3 * inch)
+    story.append(rl_overlay)
+
+    story.append(Spacer(1, 16))
+    story.append(Paragraph(f"<b>Grad-CAM Layer Used:</b> {result['last_conv_layer']}", normal_style))
+
+    doc.build(story)
+    pdf_buffer.seek(0)
+    return pdf_buffer
+
+
+# SESSION STATE
 if "uploaded_image" not in st.session_state:
     st.session_state.uploaded_image = None
 if "confirmed" not in st.session_state:
     st.session_state.confirmed = False
+if "prediction_result" not in st.session_state:
+    st.session_state.prediction_result = None
 
-# -------------------- BODY UI --------------------
+# BODY UI
 col1, col_left_gap, col_main, col_right_gap, col5 = st.columns([0.25, 0.25, 7, 0.25, 0.25])
 with col_main:
     # --- Title ---
@@ -478,6 +554,7 @@ with col_main:
     if reset:
         st.session_state.uploaded_image = None
         st.session_state.confirmed = False
+        st.session_state.prediction_result = None
         st.rerun()
 
     if uploaded is not None:
@@ -502,34 +579,61 @@ with col_main:
     predict_btn = st.button(" Detect Disease", use_container_width=True, disabled=not st.session_state.confirmed)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    if "prediction_result" not in st.session_state:
-        st.session_state.prediction_result = None
-
     if predict_btn:
         try:
             model, class_names = load_model_and_classes()
+            validator = load_validator_model()
             pil_img = st.session_state.uploaded_image
 
-            # Store result in session state so it persists during reruns
-            st.session_state.prediction_result = predict_and_explain_xai_pil(
-                pil_img=pil_img,
-                model=model,
-                class_names=class_names,
-                DISEASE_INFO=DISEASE_EXPLANATIONS,
-                threshold=0.60,
-                img_size=(224, 224),
-            )
+            # ── STEP 1: Leaf Validator ──
+            img_resized = pil_img.convert("RGB").resize((224, 224))
+            arr = np.array(img_resized).astype(np.float32) / 255.0
+            arr = np.expand_dims(arr, axis=0)
+
+            val_pred = validator.predict(arr, verbose=0)[0][0]
+            leaf_conf = 1 - val_pred  # LEAF_INDEX = 0 → {'Leaf':0, 'NotLeaf':1}
+            is_leaf = leaf_conf >= 0.80
+
+            # ── Gate 1: Not a tea leaf → stop ──
+            if not is_leaf:
+                st.error("Not a tea leaf image. Please upload a valid tea leaf photo.")
+                st.write(f"Leaf confidence: **{leaf_conf:.2%}**")
+                st.session_state.prediction_result = None
+
+            else:
+                # ── STEP 2: Disease Detection ──
+                result = predict_and_explain_xai_pil(
+                    pil_img=pil_img,
+                    model=model,
+                    class_names=class_names,
+                    DISEASE_INFO=DISEASE_EXPLANATIONS,
+                    threshold=0.50,
+                    img_size=(224, 224),
+                )
+
+                # ── Gate 2: Low confidence → unclear image ──
+                if result["confidence"] < 0.40:
+                    st.warning("Unclear image — model is not confident enough.")
+                    st.write("Please upload a **clearer, well-lit** tea leaf image.")
+                    st.write(f"Best guess: **{result['pred_class']}** ({result['confidence']:.2%})")
+                    st.session_state.prediction_result = None
+
+                else:
+                    # Store result in session state so it persists during reruns
+                    st.session_state.prediction_result = result
 
         except FileNotFoundError as e:
             st.error(
                 "Model files not found. Make sure these exist in the same folder as app.py:\n"
                 "- MobileNetV2_TeaDisease_Final.keras\n"
+                "- leaf_validator_best.keras\n"
                 "- class_names.json\n\n"
                 f"Error: {e}"
             )
         except Exception as e:
             st.error(f"Something went wrong while predicting: {e}")
 
+    # Display Results
     if st.session_state.prediction_result:
         result = st.session_state.prediction_result
 
@@ -548,27 +652,33 @@ with col_main:
         st.caption(f"Grad-CAM last conv layer used: `{result['last_conv_layer']}`")
 
         c1, c2 = st.columns(2)
-
         with c1:
             st.image(result["overlay"], caption="Grad-CAM Overlay", width=400)
-
         with c2:
             st.image(result["heatmap"], caption="Heatmap (raw)", width=400)
 
-        # -------------------- Follow to Chatbot Button --------------------
-        if st.button("Follow to Chatbot", use_container_width=True):
-            st.session_state['chat_init_message'] = (
-                f"The detected disease is: {result['pred_class']}. "
-                f"Explanation: {result['explanation']}"
+        pdf_file = create_pdf_report(st.session_state.uploaded_image, result)
+
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            st.download_button(
+                label="Download PDF Report",
+                data=pdf_file,
+                file_name="gptea_disease_report.pdf",
+                mime="application/pdf",
+                use_container_width=True,
             )
-            # Redirect to chatbot page
-            st.switch_page("pages/04_chatbot.py")
+        with btn_col2:
+            if st.button("Follow to Chatbot", use_container_width=True):
+                st.session_state['chat_init_message'] = (
+                    f"The detected disease is: {result['pred_class']}. "
+                    f"Explanation: {result['explanation']}"
+                )
+                st.switch_page("pages/04_chatbot.py")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-
-
-# Footer
+# FOOTER
 st.markdown("---")
 st.markdown("""
 <div class="footer">
@@ -601,3 +711,4 @@ st.markdown("""
     <p class="center-text">© 2026 GPTea Research Project. All rights reserved.</p>
 </div>
 """, unsafe_allow_html=True)
+

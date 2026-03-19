@@ -6,6 +6,7 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from pages.feedback_utils import render_feedback_widget
 
 # Show initial message from other pages
 if "chat_init_message" in st.session_state:
@@ -177,6 +178,12 @@ st.markdown(f"""
     </div>
 </div>
 """, unsafe_allow_html=True)
+
+#FEEDBACK
+render_feedback_widget(
+    page_id   = "chatbot",
+    icon_path = str(BASE_DIR / "assets" / "favicon_zoom.png"),
+)
 
 col1, col_left_gap, col_main, col_right_gap, col5 = st.columns([0.25, 0.25, 7, 0.25, 0.25])
 
