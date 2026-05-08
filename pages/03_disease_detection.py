@@ -1,6 +1,7 @@
 import base64
 import json
 import io
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -585,7 +586,7 @@ with col_main:
             validator = load_validator_model()
             pil_img = st.session_state.uploaded_image
 
-            # ── STEP 1: Leaf Validator ──
+            # Leaf Validator
             img_resized = pil_img.convert("RGB").resize((224, 224))
             arr = np.array(img_resized).astype(np.float32) / 255.0
             arr = np.expand_dims(arr, axis=0)
@@ -594,7 +595,7 @@ with col_main:
             leaf_conf = 1 - val_pred  # LEAF_INDEX = 0 → {'Leaf':0, 'NotLeaf':1}
             is_leaf = leaf_conf >= 0.80
 
-            # ── Gate 1: Not a tea leaf → stop ──
+            # Not a tea leaf → stop
             if not is_leaf:
                 st.error("Not a tea leaf image. Please upload a valid tea leaf photo.")
                 st.write(f"Leaf confidence: **{leaf_conf:.2%}**")
