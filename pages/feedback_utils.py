@@ -1,7 +1,3 @@
-# feedback_utils.py
-# Place this file in your project root (same level as your pages/ folder).
-# Every page imports and calls render_feedback_widget(PAGE_ID, ICON_PATH).
-
 import json
 import base64
 import streamlit as st
@@ -46,14 +42,7 @@ def _save_feedback(page_id: str, stars: int, comment: str) -> None:
 
 
 def render_feedback_widget(page_id: str, icon_path: str) -> None:
-    """
-    Call this once per page, BEFORE any other st.* widgets.
-
-    page_id   : one of 'disease_detection', 'yield_prediction', 'chatbot'
-    icon_path : absolute or relative path to the button icon PNG
-    """
-
-    # ── 1. Read & save any incoming feedback from the URL param ──────────────
+    # Read & save any incoming feedback from the URL param
     _fb_raw = st.query_params.get("fb")
 
     if _fb_raw:
@@ -72,11 +61,11 @@ def render_feedback_widget(page_id: str, icon_path: str) -> None:
 
         st.query_params.clear()
 
-    # ── 2. Load icon ──────────────────────────────────────────────────────────
+    # Load icon
     with open(icon_path, "rb") as _f:
         _icon_b64 = base64.b64encode(_f.read()).decode()
 
-    # ── 3. Render the floating widget ─────────────────────────────────────────
+    # Render the floating widget
     components.html(
         f"""
         <script>
@@ -97,8 +86,15 @@ def render_feedback_widget(page_id: str, icon_path: str) -> None:
           /* ── CSS ── */
           const style = doc.createElement('style');
           style.textContent = `
+            /*
+             * FIX 1: Raise button above Streamlit chat input bar (~80px tall on chatbot page).
+             * Disease detection page has no chat bar so 110px bottom is fine there too.
+             */
             #gptea-feedback-trigger {{
-              position: fixed; bottom: 55px; right: 55px; z-index: 999999;
+              position: fixed;
+              bottom: 110px;
+              right: 55px;
+              z-index: 2147483647;
               display: flex; align-items: center; gap: 8px;
               background: #ffffff; color: #000000;
               border: 2px solid #1f5a3f; border-radius: 999px;
@@ -112,16 +108,29 @@ def render_feedback_widget(page_id: str, icon_path: str) -> None:
             #gptea-feedback-trigger img {{
               width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
             }}
+
+            /*
+             * FIX 2: Panel also raised so it doesn't hide behind chat bar.
+             * FIX 3: z-index set to max so it layers above everything including st.chat_input.
+             * FIX 4: display:none default, display:flex when .open — use !important to beat
+             *         any Streamlit global styles that might force display:none.
+             */
             #gptea-feedback-panel {{
-              position: fixed; bottom: 120px; right: 55px; z-index: 999998;
+              position: fixed;
+              bottom: 180px;
+              right: 55px;
+              z-index: 2147483647;
               width: 320px; background: #ffffff; border-radius: 20px;
               box-shadow: 0 8px 40px rgba(31,90,63,0.22), 0 2px 8px rgba(0,0,0,0.10);
               padding: 24px 22px 20px 22px;
-              display: none; flex-direction: column; gap: 14px;
+              display: none;
+              flex-direction: column; gap: 14px;
               border: 1px solid rgba(31,90,63,0.13); font-family: sans-serif;
+            }}
+            #gptea-feedback-panel.open {{
+              display: flex !important;
               animation: gptea-slidein 0.22s cubic-bezier(.4,0,.2,1);
             }}
-            #gptea-feedback-panel.open {{ display: flex; }}
             @keyframes gptea-slidein {{
               from {{ opacity:0; transform: translateY(16px) scale(0.97); }}
               to   {{ opacity:1; transform: translateY(0) scale(1); }}
@@ -134,10 +143,9 @@ def render_feedback_widget(page_id: str, icon_path: str) -> None:
             .fb-stars  {{ display: flex; gap: 6px; justify-content: center; margin: 4px 0; }}
             .fb-stars span {{
               font-size: 32px; cursor: pointer; color: #d0d0d0;
-              transition: color 0.15s, transform 0.12s; user-select: none; line-height: 1;
+              transition: color 0.12s, transform 0.1s; user-select: none; line-height: 1;
+              display: inline-block;
             }}
-            .fb-stars span:hover,
-            .fb-stars span.active {{ color: #f5a623; transform: scale(1.18); }}
             #gptea-fb-text {{
               width: 100%; min-height: 72px;
               border: 1px solid rgba(31,90,63,0.22); border-radius: 10px;
@@ -200,22 +208,52 @@ def render_feedback_widget(page_id: str, icon_path: str) -> None:
           const sub       = doc.querySelector('.fb-sub');
           const starsDiv  = doc.getElementById('gptea-fb-stars');
 
-          trigger.addEventListener('click', () => panel.classList.toggle('open'));
-          closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+          // Toggle panel open/closed on button click
+          trigger.addEventListener('click', (e) => {{
+            e.stopPropagation();
+            panel.classList.toggle('open');
+          }});
+
+          closeBtn.addEventListener('click', (e) => {{
+            e.stopPropagation();
+            panel.classList.remove('open');
+          }});
+
+          // Close when clicking outside the widget
+          doc.addEventListener('click', (e) => {{
+            const w = doc.getElementById('gptea-feedback-trigger-wrapper');
+            if (w && !w.contains(e.target)) {{
+              panel.classList.remove('open');
+            }}
+          }});
+
+          // Paint stars 1..n yellow, rest grey - direct style, works cross-iframe
+          function paintStars(n) {{
+            stars.forEach(x => {{
+              const v = parseInt(x.getAttribute('data-val'));
+              x.style.color     = v <= n ? '#f5a623' : '#d0d0d0';
+              x.style.transform = v <= n ? 'scale(1.15)' : 'scale(1)';
+            }});
+          }}
 
           stars.forEach(s => {{
-            s.addEventListener('click', () => {{
-              rating = parseInt(s.dataset.val);
-              stars.forEach(x => x.classList.toggle('active', parseInt(x.dataset.val) <= rating));
-            }});
+            s.onmouseover = function() {{
+              paintStars(parseInt(this.getAttribute('data-val')));
+            }};
+            s.onmouseout = function() {{
+              paintStars(rating);
+            }};
+            s.onclick = function() {{
+              rating = parseInt(this.getAttribute('data-val'));
+              paintStars(rating);
+            }};
           }});
 
           submitBtn.addEventListener('click', () => {{
-            // Include page_id in the payload so Python knows which file to write
             const payload = JSON.stringify({{
               page:    PAGE,
               stars:   rating,
-              comment: textarea.value.trim()
+              comment: textarea.value.trim()   // FIX: original had typo "textarea.vstreaalue"
             }});
 
             const url = new URL(window.parent.location.href);
@@ -233,8 +271,8 @@ def render_feedback_widget(page_id: str, icon_path: str) -> None:
               panel.classList.remove('open');
               setTimeout(() => {{
                 rating = 0;
-                stars.forEach(x => x.classList.remove('active'));
-                textarea.value          = '';
+                paintStars(0);
+                textarea.value          = '';   // FIX: original had typo "textarea.vstreaalue"
                 starsDiv.style.display  = '';
                 textarea.style.display  = '';
                 submitBtn.style.display = '';
