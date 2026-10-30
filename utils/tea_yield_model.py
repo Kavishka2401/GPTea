@@ -308,7 +308,7 @@ def generate_ai_explanation(pipeline, input_df):
             {feature_summary}
             """
 
-        client = Groq(api_key="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")
+        client = Groq(api_key="key")
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}]
